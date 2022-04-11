@@ -3,8 +3,8 @@
 """
 from common.encrypt import encrypt
 import re
-from zhihu_crawl.constants import X_ZSE_93
-from zhihu_crawl.zhihu_types import *
+from zhihu_crawler.constants import X_ZSE_93
+from zhihu_crawler.zhihu_types import *
 from math import ceil
 from urllib.parse import unquote, urljoin, quote
 from my_fake_useragent import UserAgent

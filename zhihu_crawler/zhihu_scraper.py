@@ -48,7 +48,7 @@ class ZhiHuScraper:
         }
         self.requests_kwargs.update(proxies)
 
-    def search_crawl(self, key_word: Union[str], **kwargs):
+    def search_crawler(self, key_word: Union[str], **kwargs):
         """
         通过关键词对检索结果进行采集
         :param key_word: 需要采集的关键词
@@ -56,9 +56,9 @@ class ZhiHuScraper:
         """
         kwargs['scraper'] = self
         iter_search_pages_fn = partial(iter_search_pages, key_word=key_word, request_fn=self.send, **kwargs)
-        return self._generic_crawl(extract_data, iter_search_pages_fn, **kwargs)
+        return self._generic_crawler(extract_data, iter_search_pages_fn, **kwargs)
 
-    def question_crawl(self, question_id: Union[str], **kwargs):
+    def question_crawler(self, question_id: Union[str], **kwargs):
         """
         通过问题id采集
         """
@@ -66,45 +66,45 @@ class ZhiHuScraper:
         iter_question_pages_fn = partial(iter_question_pages, question_id=question_id, request_fn=self.send, **kwargs)
         count = 0
         answer_count = kwargs.get('answer_count')
-        for result in self._generic_crawl(extract_data, iter_question_pages_fn, **kwargs):
+        for result in self._generic_crawler(extract_data, iter_question_pages_fn, **kwargs):
             count += 1
             if count >= answer_count:
                 break
             yield result
 
-    def article_crawl(self, article_id: Union[str], **kwargs):
+    def article_crawler(self, article_id: Union[str], **kwargs):
         """
         通过文章id采集文章页数据
         """
         kwargs['scraper'] = self
         iter_article_pages_fn = partial(iter_article_pages, article_id=article_id, request_fn=self.send, **kwargs)
-        return self._generic_crawl(extract_data, iter_article_pages_fn, **kwargs)
+        return self._generic_crawler(extract_data, iter_article_pages_fn, **kwargs)
 
-    def video_crawl(self, video_id: Union[str], **kwargs):
+    def video_crawler(self, video_id: Union[str], **kwargs):
         """
         通过视频id采集视频页数据
         """
         kwargs['scraper'] = self
         iter_video_pages_fn = partial(iter_video_pages, video_id=video_id, request_fn=self.send, **kwargs)
-        return self._generic_crawl(extract_data, iter_video_pages_fn, **kwargs)
+        return self._generic_crawler(extract_data, iter_video_pages_fn, **kwargs)
 
-    def user_crawl(self, user_id: Union[str], **kwargs):
+    def user_crawler(self, user_id: Union[str], **kwargs):
         """
         通过账号id采集个人主页数据
         """
         kwargs['scraper'] = self
         iter_user_page_fn = partial(iter_user_pages, user_id=user_id, request_fn=self.send, **kwargs)
-        return self._generic_crawl(extract_user, iter_user_page_fn, **kwargs)
+        return self._generic_crawler(extract_user, iter_user_page_fn, **kwargs)
 
-    def hot_list_crawl(self, **kwargs):
+    def hot_list_crawler(self, **kwargs):
         """
         首页热榜采集
         """
         kwargs['scraper'] = self
         iter_hot_page_fn = partial(iter_hot_list_pages, request_fn=self.send, **kwargs)
-        return self._generic_crawl(extract_hot_data, iter_hot_page_fn, **kwargs)
+        return self._generic_crawler(extract_hot_data, iter_hot_page_fn, **kwargs)
 
-    def hot_question_crawl(self, domains, **kwargs):
+    def hot_question_crawler(self, domains, **kwargs):
         """
         热点问题采集
         """
@@ -113,7 +113,7 @@ class ZhiHuScraper:
         for domain in domains:
             iter_hot_question_page_fn = partial(iter_hot_question_pages, domain=domain, request_fn=self.send, **kwargs)
             count = 0
-            for result in self._generic_crawl(extract_hot_data, iter_hot_question_page_fn, **kwargs):
+            for result in self._generic_crawler(extract_hot_data, iter_hot_question_page_fn, **kwargs):
                 if count >= question_count:
                     break
                 count += 1
@@ -165,11 +165,11 @@ class ZhiHuScraper:
     def post(self, url, **kwargs):
         pass
 
-    def _generic_crawl(self,
-                       extract_fn,
-                       iter_pages_fn,
-                       options=None,
-                       **kwargs):
+    def _generic_crawler(self,
+                         extract_fn,
+                         iter_pages_fn,
+                         options=None,
+                         **kwargs):
         """
         中转函数
         @extract_fn 数据清洗方法

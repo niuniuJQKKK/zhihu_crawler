@@ -2,8 +2,8 @@
 页面迭代器
 """
 import json
-from zhihu_crawl.zhihu_types import *
-from zhihu_crawl.constants import *
+from zhihu_crawler.zhihu_types import *
+from zhihu_crawler.constants import *
 from loguru import logger
 import time
 import re

@@ -9,11 +9,11 @@ def set_cookies(cookies):
     pass
 
 
-def search_crawl(key_word: Optional[str] = None,
-                 comment_count: Optional[int] = -1,
-                 similar_keywords: Union[bool] = False,
-                 count: Optional[int] = -1,
-                 **kwargs):
+def search_crawler(key_word: Optional[str] = None,
+                   comment_count: Optional[int] = -1,
+                   similar_keywords: Union[bool] = False,
+                   count: Optional[int] = -1,
+                   **kwargs):
     """
     关键词搜索采集（answer、article、video...）
     :param key_word: 关键词
@@ -52,13 +52,13 @@ def search_crawl(key_word: Optional[str] = None,
         for data_type in data_types:
             kwargs['data_type'] = data_type
             num = 0
-            for result in _scraper.search_crawl(key_word, **kwargs):
+            for result in _scraper.search_crawler(key_word, **kwargs):
                 if num >= count:
                     break
                 num += 1
                 yield result
     else:
-        return _scraper.search_crawl(key_word, **kwargs)
+        return _scraper.search_crawler(key_word, **kwargs)
 
 
 def top_search_crawl(top_search_url: Optional[str] = TOP_SEARCH_URL,
@@ -76,9 +76,9 @@ def top_search_crawl(top_search_url: Optional[str] = TOP_SEARCH_URL,
     pass
 
 
-def hot_questions_crawl(period: Union[str] = 'hour',
-                        domains: Union[str, list, tuple] = 0,
-                        **kwargs):
+def hot_questions_crawler(period: Union[str] = 'hour',
+                          domains: Union[str, list, tuple] = 0,
+                          **kwargs):
     """
     问题热榜
     url = https://www.zhihu.com/knowledge-plan/hot-question/hot/0/hour 小时榜
@@ -101,10 +101,10 @@ def hot_questions_crawl(period: Union[str] = 'hour',
     options['answer_count'] = kwargs.pop('answer_count', -1)
     options['comment_count'] = kwargs.pop('comment_count', -1)
     kwargs['period'] = period
-    return _scraper.hot_question_crawl(domains=domains, **kwargs)
+    return _scraper.hot_question_crawler(domains=domains, **kwargs)
 
 
-def hot_list_crawl(answer_count: Union[int] = -1, **kwargs):
+def hot_list_crawler(answer_count: Union[int] = -1, **kwargs):
     """
     首页热榜
     https://www.zhihu.com/hot
@@ -115,7 +115,7 @@ def hot_list_crawl(answer_count: Union[int] = -1, **kwargs):
     options: Union[Dict[str, Any], Set[str]] = kwargs.setdefault('options', {})
     options['comment_count'] = kwargs.pop('comment_count', -1)
     options['answer_count'] = answer_count
-    return _scraper.hot_list_crawl(**kwargs)
+    return _scraper.hot_list_crawler(**kwargs)
 
 
 def question_newest():
@@ -125,14 +125,14 @@ def question_newest():
     pass
 
 
-def common_crawl(task_id: Union[str],
-                 data_type: Optional[str] = None,
-                 urls: Optional[Iterator[str]] = None,
-                 answer_count: Optional[int] = -1,
-                 comment_count: Optional[int] = -1,
-                 similar_questions: Optional[bool] = False,
-                 similar_recommends: Optional[bool] = False,
-                 **kwargs):
+def common_crawler(task_id: Union[str],
+                   data_type: Optional[str] = None,
+                   urls: Optional[Iterator[str]] = None,
+                   answer_count: Optional[int] = -1,
+                   comment_count: Optional[int] = -1,
+                   similar_questions: Optional[bool] = False,
+                   similar_recommends: Optional[bool] = False,
+                   **kwargs):
     """
     通用采集(问答、视频、专栏、文章、话题)
     :param task_id: 问题id、视频id、文章id、话题id.
@@ -158,24 +158,24 @@ def common_crawl(task_id: Union[str],
     if similar_recommends:
         options['similar_recommends'] = similar_recommends
     if data_type == QUESTION:
-        return _scraper.question_crawl(question_id=task_id, **kwargs)
+        return _scraper.question_crawler(question_id=task_id, **kwargs)
     elif data_type == ARTICLE:
-        return _scraper.article_crawl(article_id=task_id, **kwargs)
+        return _scraper.article_crawler(article_id=task_id, **kwargs)
     elif data_type == VIDEO:
-        return _scraper.video_crawl(video_id=task_id, **kwargs)
+        return _scraper.video_crawler(video_id=task_id, **kwargs)
     if data_type not in (ARTICLE, VIDEO, QUESTION):
         raise ValueError('匹配不到可以采集的数据类型，请校对data_type的值')
     return
 
 
-def user_crawl(user_id: Union[str],
-               following: Union[int] = -1,
-               followers: Union[int] = -1,
-               following_topics: Union[int] = -1,
-               following_columns: Union[int] = -1,
-               following_questions: Union[int] = -1,
-               following_collections: Union[int] = -1,
-               **kwargs):
+def user_crawler(user_id: Union[str],
+                 following: Union[int] = -1,
+                 followers: Union[int] = -1,
+                 following_topics: Union[int] = -1,
+                 following_columns: Union[int] = -1,
+                 following_questions: Union[int] = -1,
+                 following_collections: Union[int] = -1,
+                 **kwargs):
     """
     账号采集
     :param user_id: (str) 账号id 如 https://www.zhihu.com/people/kenneth-pan/answers中 kenneth-pan为user_id
@@ -208,16 +208,10 @@ def user_crawl(user_id: Union[str],
     options['pin_count'] = kwargs.pop('pin_count', -1)
     options['column_item_count'] = kwargs.pop('column_item_count', -1)
     options['question_answer_count'] = kwargs.pop('question_answer_count', -1)
-    if following:
-        options['following'] = following
-    if followers:
-        options['followers'] = followers
-    if following_topics:
-        options['following_topics'] = following_topics
-    if following_columns:
-        options['following_columns'] = following_columns
-    if following_questions:
-        options['following_questions'] = following_questions
-    if following_collections:
-        options['following_collections'] = following_collections
-    return _scraper.user_crawl(user_id, **kwargs)
+    options['following'] = following
+    options['followers'] = followers
+    options['following_topics'] = following_topics
+    options['following_columns'] = following_columns
+    options['following_questions'] = following_questions
+    options['following_collections'] = following_collections
+    return _scraper.user_crawler(user_id, **kwargs)

@@ -12,9 +12,9 @@ __zhihu_types.py__ 类型提示、检查。项目自定义类型
 __注意事项__ 项目内有部分异步操作，在模块引用之前需要使用猴子补丁; 同时该项目没有对ip限制、登录做针对性处理
 ```
 # 猴子补丁
-from gevent import monkey as curious_george
-curious_george.patch_all(thread=False, select=False)
-from zhihu_crawl import *
+from gevent import monkey
+monkey.patch_all()
+from zhihu_crawler import *
 ```
 
 __搜索采集使用案例__:

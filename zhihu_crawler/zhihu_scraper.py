@@ -67,9 +67,9 @@ class ZhiHuScraper:
         count = 0
         answer_count = kwargs.get('answer_count')
         for result in self._generic_crawler(extract_data, iter_question_pages_fn, **kwargs):
-            count += 1
             if count >= answer_count:
                 break
+            count += 1
             yield result
 
     def article_crawler(self, article_id: Union[str], **kwargs):
@@ -139,9 +139,12 @@ class ZhiHuScraper:
             if x_zse_96 or cookie:
                 self.session.headers.update(get_headers(url) or {})
                 self.session.headers.update(cookie)
-            response = self.session.get(url, proxies=proxies, **self.requests_kwargs)
-            response.raise_for_status()
-            return response
+            try:
+                response = self.session.get(url, proxies=proxies, **self.requests_kwargs)
+                response.raise_for_status()
+                return response
+            except Exception as e:
+                logger.error(f'http error: {e}')
         if isinstance(url, list):  # 使用协程请求
             return self.generic_response(url, x_zse_96=x_zse_96, proxies=proxies)
 

@@ -77,7 +77,7 @@ TOP_SEARCH_URL = 'https://www.zhihu.com/api/v4/search/top_search'
 # 话题
 TOPIC_BASE_URL = 'https://www.zhihu.com/topic/'
 # 评论url
-COMMENT_URL = 'https://www.zhihu.com/api/v4/{data_type}/{id}/comments?order=reverse&limit=20&offset=0&status=open'
+COMMENT_URL = 'https://api.zhihu.com/{data_type}/{id}/comments?order=reverse&limit=20&offset=0&status=open'
 
 
 # x-zse-93

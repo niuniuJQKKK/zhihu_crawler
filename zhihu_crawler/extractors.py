@@ -78,7 +78,7 @@ class BaseExtractor:
     def detail_response(self):
         """
         详情页请求
-        :param url:
+        :param:
         :return:
         """
         if self._detail_response is not None:
@@ -107,7 +107,7 @@ class BaseExtractor:
             self.extract_url,
             self.extract_pictures,
             self.extract_video_url,
-            self.extract_user,
+            self.extract_author,
             self.extract_labels,
             self.extract_up_count,
             self.extract_appreciate_count,
@@ -131,12 +131,12 @@ class BaseExtractor:
         for key in temp_info.keys():
             if self.type == QUESTION:
                 pop_info = self.info.pop(key)
-                if key in ('user_info', 'content', 'pictures'):  # 将问题的user信息和内容信息移至question_info下
+                if key in ('author_info', 'content', 'pictures'):  # 将问题的user信息和内容信息移至question_info下
                     self.info[key] = pop_info
                 if key == 'question_info':
                     self.info.update(pop_info)
 
-        # ---------- 如果是问题采集回答  -————------#
+        # ********* 如果是问题采集回答 ********* #
         total_count = self.info.get('question_answer_count')
         question_id = self.info.get('question_id', '')
         answer_count = self.options.get('answer_count')
@@ -146,11 +146,7 @@ class BaseExtractor:
             self.extract_meta_data(url, type_name='answers', total_count=total_count)
         self.info['type'] = self.type
         # 采集评论:
-        total_count = self.info.get('comment_count')
-        count = self.options.get('comment_count')
-        if count > -1 and total_count > 0:
-            self.options['comment_count'] = count if 0 < count < total_count else total_count
-            self.info.update(self.extract_comments())
+        self.info.update(self.extract_comments())
         del temp_info
         return self.info
 
@@ -265,7 +261,7 @@ class BaseExtractor:
             url = urljoin(BASE_URL, f"question/{question_id}/answer/{self.info.get(f'{self.type}_id', '')}")
         if not url:
             url = self.element.get('video_url', '')
-        url = re.sub('.*/articles/', ARTICLE_BASE_URL, url)
+        url = re.sub('.*/articles/', ARTICLE_BASE_URL, url).replace('api/v4/zvideos', 'zvideo')
         return {
             'source_url': url
         }
@@ -298,7 +294,7 @@ class BaseExtractor:
                 video_url = result[0] if result else ''
         return {'video_url': video_url}
 
-    def extract_user(self, author_info=None):
+    def extract_author(self, author_info=None):
         """
         用户信息
         """
@@ -308,7 +304,7 @@ class BaseExtractor:
         badge = author_info.get('badge', [])
         auth_infos = [badge_dict.get('description') for badge_dict in badge if badge_dict]
         return {
-            'user_info': {
+            'author_info': {
                 'user_name': author_info.get('name', '').replace('<em>', '').replace('</em>', ''),
                 'user_url_token': user_url_token,
                 'user_id': author_info.get('id', ''),
@@ -404,15 +400,22 @@ class BaseExtractor:
             'like_count': self.element.get('liked_count', 0)
         }
 
-    def extract_comments(self) -> Dict[str, List]:
+    def extract_comments(self, comment_count=0, comment_url=None) -> Dict[str, List]:
         """
         评论数据采集. 理论上该部分应该独立采集
         :return:
         """
         comments = []
-        comment_count = self.options.get('comment_count')
-        next_url = COMMENT_URL.format(data_type=f'{self.type}s', id=self.info.get(f'{self.type}_id'))
-        page_urls = generating_page_links(next_url, total_num=comment_count)
+        comment_count = comment_count if comment_count else self.info.get('comment_count')
+        count = self.options.get('comment_count')
+        if count == -1 or comment_count == 0:
+            return {'comments': comments}
+        comment_count = comment_count if count == 0 and comment_count > count else count
+        data_type = self.type.replace(VIDEO_ANSWER, ANSWER)
+        if comment_url is None:
+            comment_url = COMMENT_URL.format(data_type=f'{data_type}s', id=self.info.get(f'{self.type}_id'))
+        page_urls = generating_page_links(comment_url, total_num=comment_count)
+        logger.info(f'start request links: {page_urls}')
         for responses in self.request_fn(page_urls):
             for response in responses:
                 if response is None or (response and response.status_code != 200):
@@ -429,7 +432,7 @@ class BaseExtractor:
                         'comment_content': comment_content,
                         'comment_pub_time': comment_info.get('created_time', 0),
                         'comment_vote_count': comment_info.get('vote_count', 0),
-                        'user_info': comment_info.get('author', {}).get('member', {}),
+                        'author_info': comment_info.get('author', {}).get('member', {}),
                         'reply_to_author': comment_info.get('reply_to_author', {}).get('member', {})
                     }
                     comments.append(info)
@@ -459,17 +462,18 @@ class BaseExtractor:
                 response_json = json.loads(response.text) if response else {}
                 infos = response_json.get('data', [])
                 for info in infos:
+                    extractor = None
                     if type_name in ('questions', 'following_questions'):
-                        result = UserQuestionExtractor(info, self.options, self.request_fn,
-                                                       full_html=None).extract_data()
+                        extractor = UserQuestionExtractor(info, self.options, self.request_fn, full_html=None)
                     elif type_name == 'pins':
-                        result = UserPinExtractor(info, self.options, self.request_fn, full_html=None).extract_data()
+                        extractor = UserPinExtractor(info, self.options, self.request_fn, full_html=None)
                     elif type_name in ('columns', 'following_columns'):
-                        result = UserColumnExtractor(info, self.options, self.request_fn, full_html=None).extract_data()
+                        extractor = UserColumnExtractor(info, self.options, self.request_fn, full_html=None)
                     elif type_name in ('following', 'followers'):
-                        result = UserExtractor(info, self.options, self.request_fn, full_html=None).extract_user_info()
+                        extractor = UserExtractor(info, self.options, self.request_fn, full_html=None)
                     else:
-                        result = BaseExtractor(info, self.options, self.request_fn, full_html=None).extract_data()
+                        extractor = BaseExtractor(info, self.options, self.request_fn, full_html=None)
+                    result = extractor.extract_data()
                     data_list.append(result)
                     if total_count <= len(data_list):
                         return {
@@ -500,12 +504,12 @@ class HotQuestionExtractor(BaseExtractor):
 
 class UserExtractor(BaseExtractor):
     """
-    问题清洗
+    用户信息
     """
 
     def extract_data(self):
         methods = [
-            self.extract_user_info
+            self.extract_user
         ]
         for method in methods:
             try:
@@ -518,7 +522,7 @@ class UserExtractor(BaseExtractor):
                 logger.debug(f'method: {method.__name__} error:{ex}')
 
         user_id = self.info.get('user_url_token', '')
-        # ---------------    用户回答列表采集 --------------- #
+        # ********* 用户回答列表采集 ********* #
         total_count = self.info['user_answer_count']
         count = self.options.get('answer_count')
         if count > -1 and total_count > 0:
@@ -529,7 +533,7 @@ class UserExtractor(BaseExtractor):
                                             total_count=total_count) or {}
             self.info.update(result)
 
-        # ---------------    用户视频列表采集 --------------- #
+        # ********* 用户视频列表采集 ********* #
         total_count = self.info['user_zvideo_count']
         count = self.options.get('zvideo_count')
         if count > -1 and total_count > 0:
@@ -540,7 +544,7 @@ class UserExtractor(BaseExtractor):
                                             total_count=total_count) or {}
             self.info.update(result)
 
-        # ---------------    用户文章列表采集 --------------- #
+        # ********* 用户文章列表采集 ********* #
         total_count = self.info['user_articles_count']
         count = self.options.get('article_count')
         if count > -1 and total_count > 0:
@@ -552,7 +556,7 @@ class UserExtractor(BaseExtractor):
                                             total_count=total_count) or {}
             self.info.update(result)
 
-        # ---------------    用户提问列表采集 --------------- #
+        # ********* 用户提问列表采集 ********* #
         total_count = self.info['user_question_count']
         count = self.options.get('question_count')
         if count > -1 and total_count > 0:
@@ -563,7 +567,7 @@ class UserExtractor(BaseExtractor):
                                             total_count=total_count) or {}
             self.info.update(result)
 
-        # ---------------    用户想法列表采集 --------------- #
+        # ********* 用户想法列表采集 ********* #
         total_count = self.info['user_pins_count']
         count = self.options.get('pin_count')
         if count > -1 and total_count > 0:
@@ -575,7 +579,7 @@ class UserExtractor(BaseExtractor):
                                             total_count=total_count) or {}
             self.info.update(result)
 
-        # ---------------    用户专栏列表采集 --------------- #
+        # ********* 用户专栏列表采集 ********* #
         total_count = self.info['user_columns_count']
         count = self.options.get('column_count')
         if count > -1 and total_count > 0:
@@ -586,7 +590,7 @@ class UserExtractor(BaseExtractor):
                                             total_count=total_count) or {}
             self.info.update(result)
 
-        # ---------------    用户关注的人列表采集 --------------- #
+        # ********* 用户关注的人列表采集 ********* #
         total_count = self.info['user_following_count']
         count = self.options.get('following')
         if count > -1 and total_count > 0:
@@ -598,7 +602,7 @@ class UserExtractor(BaseExtractor):
                                             x_zse_96=True) or {}
             self.info.update(result)
 
-        # ---------------    关注该用户的人列表采集 --------------- #
+        # ********* 关注该用户的人列表采集 ********* #
         total_count = self.info['user_follower_count']
         count = self.options.get('followers')
         if count > -1 and total_count > 0:
@@ -610,7 +614,7 @@ class UserExtractor(BaseExtractor):
                                             x_zse_96=True) or {}
             self.info.update(result)
 
-        # ---------------    用户关注的专栏列表采集 --------------- #
+        # ********* 用户关注的专栏列表采集 ********* #
         total_count = self.info['user_following_columns_count']
         count = self.options.get('following_columns')
         if count > -1 and total_count > 0:
@@ -622,7 +626,7 @@ class UserExtractor(BaseExtractor):
                                             x_zse_96=True) or {}
             self.info.update(result)
 
-        # ---------------    用户关注的问题列表采集 --------------- #
+        # ********* 用户关注的问题列表采集 ********* #
         total_count = self.info['user_following_question_count']
         count = self.options.get('following_questions')
         if count > -1 and total_count > 0:
@@ -634,7 +638,7 @@ class UserExtractor(BaseExtractor):
                                             x_zse_96=True) or {}
             self.info.update(result)
 
-        # ---------------    用户关注的话题列表采集 --------------- #
+        # ********* 用户关注的话题列表采集 ********* #
         total_count = self.info['user_following_topic_count']
         count = self.options.get('following_topics')
         if count > -1 and total_count > 0:
@@ -648,7 +652,7 @@ class UserExtractor(BaseExtractor):
 
         return self.info
 
-    def extract_user_info(self) -> Dict[str, Dict[str, Union[List, int, str]]]:
+    def extract_user(self) -> Dict[str, Dict[str, Union[List, int, str]]]:
         badges = self.element.get('badge', [])
         return {
             'user_id': self.element.get('id', ''),
@@ -694,7 +698,7 @@ class UserExtractor(BaseExtractor):
 
 class UserQuestionExtractor(UserExtractor):
     """
-    用户问题列表
+    用户问题
     """
 
     def extract_data(self):
@@ -704,19 +708,26 @@ class UserQuestionExtractor(UserExtractor):
         if total_count > 0 and count > -1:
             total_count = count if 0 < count < total_count else total_count
             url = QUESTION_ANSWERS_URL.format(question_id=question_info.get('question_id', ''))
-            answers = self.extract_meta_data(url, type_name='answers', total_count=total_count)
-            question_info.update(answers)
+            answer_info = self.extract_meta_data(url, type_name='answers', total_count=total_count)
+            # ********* 采集问题回答的评论  ********* #
+            for answer in answer_info.get('answers', []):
+                answer_id = answer.get('answer_id')
+                comment_url = COMMENT_URL.format(data_type='answers', id=answer_id)
+                comment_count = answer.get('comment_count')
+                comments_info = self.extract_comments(comment_count=comment_count, comment_url=comment_url) or {}
+                answer.update(comments_info)
+            question_info.update(answer_info)
         return question_info
 
 
 class UserPinExtractor(UserExtractor):
     """
-    用户想法列表采集
+    用户想法
     """
 
     def extract_data(self):
         methods = [
-            self.extract_user,
+            self.extract_author,
             self.extract_pin,
             self.extract_pin_content,
             self.extract_pin_pictures,
@@ -730,12 +741,9 @@ class UserPinExtractor(UserExtractor):
                 self.info.update(partial_info)
             except Exception as ex:
                 logger.debug(f'method: {method.__name__} error:{ex}')
-        # 采集评论:
-        total_count = self.info.get('comment_count', 0)
-        count = self.options.get('comment_count')
-        if count > -1 and total_count > 0:
-            self.options['comment_count'] = count if 0 < count < total_count else total_count
-            self.info.update(self.extract_comments())
+
+        # ********* 采集想法的评论 ********* #
+        self.info.update(self.extract_comments())
         return self.info
 
     def extract_pin(self) -> Dict[str, Union[str, int]]:
@@ -771,10 +779,10 @@ class UserPinExtractor(UserExtractor):
 
 class UserColumnExtractor(UserExtractor):
     """
-    用户专栏列表
+    用户专栏
     """
 
-    def extractor_data(self):
+    def extract_data(self):
         column_info = {
             'column_title': self.element.get('column', {}).get('title', ''),
             'column_url': self.element.get('column', {}).get('url', '').replace('api.', '').replace('columns',
@@ -788,15 +796,30 @@ class UserColumnExtractor(UserExtractor):
             'column_voteup_count': self.element.get('column', {}).get('voteup_count', 0),
             'column_all_count': self.element.get('column', {}).get('items_count', 0)
         }
-        column_info.update(self.extract_user(self.element.get('column', {}).get('author', {})))
+        column_info.update(self.extract_author(self.element.get('column', {}).get('author', {})))
         total_count = column_info['column_all_count']
         count = self.options.get('column_item_count')
         if count > -1 and total_count > 0:
             total_count = count if 0 < count < total_count else total_count
             url = COLUMN_ITEMS_URL.format(column_id=column_info.get('column_id', ''))
-            item_info = self.extract_meta_data(start_url=url,
-                                               type_name='column_items',
-                                               total_count=total_count) or {}
-            column_info.update(item_info)
-
+            items = self.extract_meta_data(start_url=url,
+                                           type_name='column_items',
+                                           total_count=total_count) or {}
+            # *********  采集专栏文章的评论 ********* #
+            for item in items.get('column_items', []):
+                article_id = item.get('article_id')
+                comment_count = item.get('comment_count')
+                comment_url = COMMENT_URL.format(data_type='articles', id=article_id)
+                comments_info = self.extract_comments(comment_count=comment_count, comment_url=comment_url) or {}
+                item.update(comments_info)
+            column_info.update(items)
         return column_info
+
+
+class UserFriendExtractor(UserExtractor):
+    """
+    用户关注人或粉丝
+    """
+
+    def extract_data(self):
+        return self.extract_user()

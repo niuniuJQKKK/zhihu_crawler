@@ -12,7 +12,7 @@ from zhihu_utils.zhihu_utils import get_proxy, get_headers, quote, urljoin, unqu
 
 def iter_search_pages(key_word: str, request_fn: RequestFunction, **kwargs):
     """
-    搜索综合页面
+    搜索
     :return:
     """
     start_url = kwargs.pop('start_url', None)
@@ -26,6 +26,8 @@ def iter_search_pages(key_word: str, request_fn: RequestFunction, **kwargs):
             start_url = start_url + f'&sort={sort}'
         if time_interval:
             start_url = start_url + f'&time_interval={time_interval}'
+
+        # ----------- 需要额外加上 cookie 才能请求成功 --------- #
         kwargs['cookie'] = {
             'cookie': 'd_c0="AvAQDHN4mxSPTtVyJn9kQSMi43V1kPWH_qc=|1646810832"; '
                       'z_c0=2|1:0|10:1647511173|4:z_c0|92:Mi4xMWtwS053QUFBQUFDO'
@@ -112,7 +114,7 @@ def generic_iter_pages(start_url, page_parser_cls, request_fn, **kwargs):
 
 class PageParser:
     """
-    面清洗
+    json数据清洗
     """
     json_prefix = 'js-initialData'
     json_regex = re.compile(r'id="js-initialData".*>(\{"initialState.*subAppName.*?})</script>')
@@ -160,7 +162,7 @@ class HotListPageParser(PageParser):
 
 class HotQuestionPageParser(PageParser):
     """
-    热点问题页面清洗
+    热点问题json数据清洗
     """
     def get_pages(self):
         data_list = self.json_data.get('data', [])
@@ -176,49 +178,49 @@ class HotQuestionPageParser(PageParser):
 
 class QuestionPageParser(PageParser):
     """
-    问题形式的页面
+    问题json数据清洗
     """
     pass
 
 
 class VideoPageParser(PageParser):
     """
-    视频形式的页面
+    视频json数据清洗
     """
     pass
 
 
 class ArticlePageParser(PageParser):
     """
-    文章形式的页面
+    文章json数据清洗
     """
     pass
 
 
 class UserPageParser(PageParser):
     """
-    用户页面
+    用户json数据清洗
     """
     pass
 
 
 class UserAnswerPageParser(PageParser):
     """
-    用户页面的回答栏
+    用户的回答json数据清洗
     """
     pass
 
 
 class UserVideoPageParser(PageParser):
     """
-    用户页面的视频栏
+    用户的视频json数据清洗
     """
     pass
 
 
 class UserArticlePageParser(PageParser):
     """
-    用户页面的文章栏
+    用户的文章json数据清洗
     """
     pass
 

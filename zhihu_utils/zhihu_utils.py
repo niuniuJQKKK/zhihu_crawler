@@ -54,7 +54,7 @@ def generating_page_links(base_url, total_num=50, limit=20):
     """
     page_urls = []
     for i in range(ceil(total_num/limit)):
-        page_urls.append(re.sub(rf'offset=[\d+]&limit=[\d+]', f'offset={i*limit}&limit={limit}', base_url))
+        page_urls.append(re.sub(rf'offset=\d+&limit=\d+', f'offset={i*limit}&limit={limit}', base_url))
     return page_urls
 
 

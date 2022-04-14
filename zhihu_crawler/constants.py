@@ -19,7 +19,7 @@ QUESTION_ANSWERS_URL = 'https://api.zhihu.com/questions/{question_id}/answers?in
                       'Crelationship.is_authorized%2Cis_author%2Cvoting%2Cis_thanked%2Cis_nothelp%2Cis_recognized%3' \
                       'Bdata%5B%2A%5D.mark_infos%5B%2A%5D.url%3Bdata%5B%2A%5D.author.follower_count%2Cvip_info%2' \
                       'Cbadge%5B%2A%5D.topics%3Bdata%5B%2A%5D.settings.table_of_content.enabled&' \
-                      'limit=20&offset=0&platform=desktop&sort_by=updated'
+                      'offset=0&limit=20&platform=desktop&sort_by=updated'
 # 用户回答的接口 时间排序
 USER_ANSWERS_URL = 'https://api.zhihu.com/members/{user_id}/answers?include=data%5B*%5D.is_normal%2' \
                    'Cadmin_closed_comment%2Creward_info%2Cis_collapsed%2Cannotation_action%2Cannotation_detail%2' \
@@ -77,8 +77,9 @@ TOP_SEARCH_URL = 'https://www.zhihu.com/api/v4/search/top_search'
 # 话题
 TOPIC_BASE_URL = 'https://www.zhihu.com/topic/'
 # 评论url
-COMMENT_URL = 'https://api.zhihu.com/{data_type}/{id}/comments?order=reverse&limit=20&offset=0&status=open'
-
+COMMENT_URL = 'https://api.zhihu.com/{data_type}/{id}/comments?order=reverse&offset=0&limit=20&status=open'
+# 话题下内容列表接口
+TOPIC_FEEDS_URL = 'https://api.zhihu.com/topics/{topic_id}/feeds/timeline_activity?offset=0&limit=20'
 
 # x-zse-93
 X_ZSE_93 = '101_3_2.0'

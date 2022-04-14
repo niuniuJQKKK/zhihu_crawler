@@ -12,9 +12,9 @@ __zhihu_types.py__ 类型提示、检查。项目自定义类型
 __注意事项__ 项目内有部分异步操作，在模块引用之前需要使用猴子补丁; 同时该项目没有对ip限制、登录做针对性处理
 ```
 # 猴子补丁
-from gevent import monkey as curious_george
-curious_george.patch_all(thread=False, select=False)
-from zhihu_crawl import *
+from gevent import monkey
+monkey.patch_all()
+from zhihu_crawler import *
 ```
 
 __搜索采集使用案例__:
@@ -26,6 +26,28 @@ if __name__ == '__main__':
     for info in search_crawl(key_word='天空', count=10, data_type='answer'):
         print(info)
 ```
+
+__用户信息采集使用案例__:
+```
+    for info in user_crawler('wo-men-de-tai-kong',
+                             answer_count=2,
+                             zvideo_count=3,
+                             question_count=2,
+                             article_count=3,
+                             column_count=2,
+                             pin_count=3,
+                             following=3,
+                             followers=3,
+                             following_columns=3,
+                             following_questions=3,
+                             following_topics=3,
+                             comment_count=3,
+                             drill_down_count=3,
+                             ):
+        print(info)
+数据格式请看user_info.json
+```
+
 __热点问题采集使用案例__:
 
 ```

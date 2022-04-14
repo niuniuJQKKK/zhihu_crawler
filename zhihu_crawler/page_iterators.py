@@ -120,6 +120,7 @@ class PageParser:
     json_regex = re.compile(r'id="js-initialData".*>(\{"initialState.*subAppName.*?})</script>')
 
     def __init__(self, response):
+
         self.response = response
         self.html = None
         self.json_data = None

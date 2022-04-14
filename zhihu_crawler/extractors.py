@@ -139,7 +139,7 @@ class BaseExtractor:
         # ********* 如果是问题采集回答 ********* #
         total_count = self.info.get('question_answer_count')
         question_id = self.info.get('question_id', '')
-        answer_count = self.options.get('answer_count')
+        answer_count = self.options.get('drill_down_count')
         if self._type == QUESTION and answer_count > -1 and total_count > 0:
             total_count = answer_count if 0 < answer_count < total_count else total_count
             url = QUESTION_ANSWERS_URL.format(question_id=question_id)
@@ -195,6 +195,7 @@ class BaseExtractor:
                     if ele.text not in contents:
                         contents.append(ele.text)
             content = '\n'.join(contents)
+            content = re.sub(r'<.*>', '', content)
         return {
             'content': content
         }
@@ -233,7 +234,7 @@ class BaseExtractor:
                 'question_id': question_id,
                 'created_time': extract_time(question_info).get('pub_time'),
                 'question_title': question_title.replace('<em>', '').replace('</em>', ''),
-                'question_type': question_info.get('question_type', '') or question_info.get('type', ''),
+                'question_type': question_info.get('type', '') or question_info.get('question_type', ''),
                 'edit_time': extract_time(question_info).get('edit_time'),
                 'question_url': BASE_URL + f'question/{question_id}' if question_id else '',
                 'question_follower_count': question_info.get('follower_count', 0) or question_info.get('followerCount',
@@ -312,7 +313,7 @@ class BaseExtractor:
                 'user_headline': author_info.get('headline', ''),
                 'user_avatar_url': author_info.get('avatar_url', '') or author_info.get('avatarUrl', ''),
                 'user_is_vip': author_info.get('vip_info', {}).get('is_vip', '') or author_info.get('vipInfo', {}).get(
-                    'isVip', ''),
+                    'isVip', False),
                 'user_follower_count': author_info.get('follower_count', 0) or author_info.get('followerCount', 0),
                 'user_up_count': author_info.get('voteup_count', 0) or author_info.get('voteupCount', 0),
                 'user_auth_infos': auth_infos,
@@ -470,15 +471,17 @@ class BaseExtractor:
                     elif type_name in ('columns', 'following_columns'):
                         extractor = UserColumnExtractor(info, self.options, self.request_fn, full_html=None)
                     elif type_name in ('following', 'followers'):
-                        extractor = UserExtractor(info, self.options, self.request_fn, full_html=None)
+                        extractor = UserFriendExtractor(info, self.options, self.request_fn, full_html=None)
+                    elif type_name == 'following_topics':
+                        extractor = UserFollowingTopicExtractor(info, self.options, self.request_fn, full_html=None)
                     else:
                         extractor = BaseExtractor(info, self.options, self.request_fn, full_html=None)
                     result = extractor.extract_data()
-                    data_list.append(result)
                     if total_count <= len(data_list):
                         return {
                             type_name: data_list
                         }
+                    data_list.append(result)
                 is_end = response_json.get('paging', {}).get('is_end', False)
                 if not infos or is_end:
                     break
@@ -492,7 +495,7 @@ class HotQuestionExtractor(BaseExtractor):
 
     def extract_data(self):
         question_info = self.extract_question().get('question_info') or {}
-        count = self.options.get('answer_count')
+        count = self.options.get('drill_down_count')
         total_count = question_info.get('question_answer_count')
         if count > -1 and total_count > 0:
             total_count = count if 0 < count < total_count else total_count
@@ -642,7 +645,7 @@ class UserExtractor(BaseExtractor):
         total_count = self.info['user_following_topic_count']
         count = self.options.get('following_topics')
         if count > -1 and total_count > 0:
-            start_url = USER_FOLLOWING_COLUMNS_URL.format(user_id=user_id)
+            start_url = USER_FOLLOWING_TOPICS_URL.format(user_id=user_id)
             total_count = count if 0 < count < total_count else total_count
             result = self.extract_meta_data(start_url=start_url,
                                             type_name='following_topics',
@@ -656,6 +659,7 @@ class UserExtractor(BaseExtractor):
         badges = self.element.get('badge', [])
         return {
             'user_id': self.element.get('id', ''),
+            'user_name': self.element.get('name'),
             'user_url_token': self.element.get('url_token', ''),
             'user_head_img': self.element.get('avatar_url', ''),
             'user_is_org': self.element.get('is_org', False),
@@ -692,7 +696,7 @@ class UserExtractor(BaseExtractor):
             'user_org_industry': self.element.get('org_detail', {}).get('industry', ''),
             'user_org_url': self.element.get('home_page', ''),
             'user_org_lic_code': self.element.get('business_lic_code', '') or
-                                 self.element.get('org_detail', {}).get('social_credit_code')
+                                 self.element.get('org_detail', {}).get('social_credit_code', '')
         }
 
 
@@ -703,7 +707,7 @@ class UserQuestionExtractor(UserExtractor):
 
     def extract_data(self):
         question_info = self.extract_question().get('question_info', {})
-        count = self.options.get('question_answer_count')
+        count = self.options.get('drill_down_count')
         total_count = question_info.get('question_answer_count')
         if total_count > 0 and count > -1:
             total_count = count if 0 < count < total_count else total_count
@@ -765,6 +769,7 @@ class UserPinExtractor(UserExtractor):
         """
         content = ''.join([content.get('content', '') for content in self.element.get('content', [])
                            if content and content.get('content', '')])
+        content = re.sub(r'<.*>', '', content)
         return self.extract_content(content)
 
     def extract_pin_pictures(self) -> Dict[str, str]:
@@ -783,27 +788,28 @@ class UserColumnExtractor(UserExtractor):
     """
 
     def extract_data(self):
+        column = self.element.get('column', {}) or self.element
+        author = self.extract_author(column.get('author', {}))
         column_info = {
-            'column_title': self.element.get('column', {}).get('title', ''),
-            'column_url': self.element.get('column', {}).get('url', '').replace('api.', '').replace('columns',
-                                                                                                    'column'),
-            'column_image_url': self.element.get('column', {}).get('image_url', ''),
-            'column_edit_time': self.element.get('column', {}).get('updated', ''),
-            'column_followers': self.element.get('column', {}).get('followers', 0),
-            'column_articles_count': self.element.get('column', {}).get('articles_count', 0),
-            'column_intro': self.element.get('column', {}).get('intro', ''),
-            'column_id': self.element.get('column', {}).get('id', ''),
-            'column_voteup_count': self.element.get('column', {}).get('voteup_count', 0),
-            'column_all_count': self.element.get('column', {}).get('items_count', 0)
+            'column_title': column.get('title', ''),
+            'column_url': column.get('url', '').replace('api.', '').replace('columns', 'column'),
+            'column_image_url': column.get('image_url', ''),
+            'column_edit_time': column.get('updated', ''),
+            'column_followers': column.get('followers', 0),
+            'column_articles_count': column.get('articles_count', 0),
+            'column_intro': column.get('intro', ''),
+            'column_id': column.get('id', ''),
+            'column_voteup_count': column.get('voteup_count', 0),
+            'column_all_count': column.get('items_count', 0),
+            'column_author': author
         }
-        column_info.update(self.extract_author(self.element.get('column', {}).get('author', {})))
         total_count = column_info['column_all_count']
-        count = self.options.get('column_item_count')
+        count = self.options.get('drill_down_count')
         if count > -1 and total_count > 0:
             total_count = count if 0 < count < total_count else total_count
             url = COLUMN_ITEMS_URL.format(column_id=column_info.get('column_id', ''))
             items = self.extract_meta_data(start_url=url,
-                                           type_name='column_items',
+                                           type_name='column_articles',
                                            total_count=total_count) or {}
             # *********  采集专栏文章的评论 ********* #
             for item in items.get('column_items', []):
@@ -823,3 +829,62 @@ class UserFriendExtractor(UserExtractor):
 
     def extract_data(self):
         return self.extract_user()
+
+
+class UserFollowingTopicExtractor(UserExtractor):
+    """
+    用户关注的话题
+    """
+    def extract_data(self):
+        topic = self.extract_topic()
+        topic['feeds'] = self.extract_feed(topic)
+        return topic
+
+    def extract_topic(self):
+        topic = self.element.get('topic', {}) or self.element or {}
+        topic_api = topic.get('url', '')
+        response = self.request_fn(topic_api)
+        if response and response.status_code == 200:
+            topic = json.loads(response.text)
+        return {
+            'topic_id': topic.get('id', ''),
+            'topic_name': topic.get('name', ''),
+            'topic_url': topic.get('url', '').replace('api/v4/topics', 'topic'),
+            'topic_avatar_url': topic.get('avatar_url', ''),
+            'topic_excerpt': topic.get('excerpt', ''),
+            'topic_followers_count': topic.get('followers_count', 0),
+            'topic_introduction': topic.get('introduction', ''),
+            'topic_father_count': topic.get('father_count', 0),
+            'topic_feed_count': topic.get('questions_count', 0),
+            'topic_unanswered_count': topic.get('unanswered_count', 0),
+            'is_super_topic': topic.get('is_super_topic_vote', False),
+            'is_vote': topic.get('is_vote', False),
+            'is_black': topic.get('is_black', False)
+        }
+
+    def extract_feed(self, topic):
+        topic_feed_count = topic.get('topic_feed_count')
+        topic_id = topic.get('topic_id')
+        count = self.options.get('drill_down_count')
+        # *********  采集话题下的feed ********* #
+        if count > -1 and topic_feed_count > 0:
+            topic_feed_count = count if 0 < count < topic_feed_count else topic_feed_count
+            url = TOPIC_FEEDS_URL.format(topic_id=topic_id)
+            page_urls = generating_page_links(url, total_num=topic_feed_count)
+            feeds = []
+            for responses in self.request_fn(page_urls):
+                for response in responses:
+                    if not response or response.status_code != 200:
+                        continue
+                    data = json.loads(response.text).get('data', [])
+                    for feed in data:
+                        target = feed.get('target', {})
+                        info = BaseExtractor(target, self.options, self.request_fn).extract_data()
+                        if len(feeds) >= topic_feed_count:
+                            break
+                        feeds.append(info)
+                    if len(feeds) >= topic_feed_count:
+                        break
+            return feeds
+
+

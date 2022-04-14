@@ -65,7 +65,7 @@ class ZhiHuScraper:
         kwargs['scraper'] = self
         iter_question_pages_fn = partial(iter_question_pages, question_id=question_id, request_fn=self.send, **kwargs)
         count = 0
-        answer_count = kwargs.get('answer_count')
+        answer_count = kwargs.get('drill_down_count')
         for result in self._generic_crawler(extract_data, iter_question_pages_fn, **kwargs):
             if count >= answer_count:
                 break

@@ -27,7 +27,7 @@ def search_crawler(key_word: Optional[str] = None,
     @ time_interval: 时效。一天内（time_interval=a_day），可选择一周内（time_interval=a_week） 一月内（time_interval=a_month）
                     三月内（time_interval=three_months） 半年内(time_interval=half_a_year) 一年内（time_interval=a_year）
                     不限时间（time_interval=None）默认
-    @ answer_count: (int) 采集指定数量的回答。该值过大可能会导致多次请求。默认-1 不采集 0采集全部 >0采集指定的数量
+    @ drill_down_count: (int) 下钻内容采集数量(问题下的回答)，，默认-1 不采集 0采集全部 >0采集指定的数量
     :return:
     """
     _scraper.requests_kwargs['timeout'] = kwargs.pop('timeout', DEFAULT_REQUESTS_TIMEOUT)
@@ -35,7 +35,7 @@ def search_crawler(key_word: Optional[str] = None,
     if isinstance(options, set):
         options = {k: True for k in options}
     options.setdefault('key_word', key_word)
-    options['answer_count'] = kwargs.pop('answer_count', -1)
+    options['drill_down_count'] = kwargs.pop('drill_down_count', -1)
     if comment_count:
         options['comment_count'] = comment_count
     if similar_keywords:
@@ -91,30 +91,30 @@ def hot_questions_crawler(period: Union[str] = 'hour',
                     1018-健康      1019-艺术     1020-音乐      1021-设计      1022-影视娱乐   1023-宠物
                     1024-体育电竞   1025-运动健身  1026-动漫游戏  1027-美食      1028-旅行       1029-时尚
     @ question_count: 采集问题的数量， 默认0采集所有； >0 采集指定数量
-    @ answer_count: (int) 下钻内容采集数量，热榜下钻内容数据量大，默认-1 不采集 0采集全部 >0采集指定的数量
+    @ drill_down_count: (int) 下钻内容采集数量，热榜下钻内容数据量大，默认-1 不采集 0采集全部 >0采集指定的数量
     @ comment_count: (int) 采集指定数量的评论。该值过大可能会导致多次请求;默认-1 不采集 0采集全部 >0采集指定的数量
     """
     if isinstance(domains, int or str):
         domains = [domains]
     options: Union[Dict[str, Any], Set[str]] = kwargs.setdefault('options', {})
     kwargs['question_count'] = kwargs.pop('question_count', 0)
-    options['answer_count'] = kwargs.pop('answer_count', -1)
+    options['drill_down_count'] = kwargs.pop('drill_down_count', -1)
     options['comment_count'] = kwargs.pop('comment_count', -1)
     kwargs['period'] = period
     return _scraper.hot_question_crawler(domains=domains, **kwargs)
 
 
-def hot_list_crawler(answer_count: Union[int] = -1, **kwargs):
+def hot_list_crawler(drill_down_count: Union[int] = -1, **kwargs):
     """
     首页热榜
     https://www.zhihu.com/hot
     api: https://api.zhihu.com/topstory/hot-lists/total?limit=50
-    :param answer_count: (int) 下钻内容采集数量，热榜下钻内容数据量大，默认-1 不采集 0采集全部 >0采集指定的数量
+    :param drill_down_count: (int) 下钻内容采集数量，热榜下钻内容数据量大，默认-1 不采集 0采集全部 >0采集指定的数量
     @ comment_count: (int) 采集指定数量的评论。该值过大可能会导致多次请求;默认-1 不采集 0采集全部 >0采集指定的数量
     """
     options: Union[Dict[str, Any], Set[str]] = kwargs.setdefault('options', {})
     options['comment_count'] = kwargs.pop('comment_count', -1)
-    options['answer_count'] = answer_count
+    options['drill_down_count'] = drill_down_count
     return _scraper.hot_list_crawler(**kwargs)
 
 
@@ -128,7 +128,7 @@ def question_newest():
 def common_crawler(task_id: Union[str],
                    data_type: Optional[str] = None,
                    urls: Optional[Iterator[str]] = None,
-                   answer_count: Optional[int] = -1,
+                   drill_down_count: Optional[int] = -1,
                    comment_count: Optional[int] = -1,
                    similar_questions: Optional[bool] = False,
                    similar_recommends: Optional[bool] = False,
@@ -138,7 +138,7 @@ def common_crawler(task_id: Union[str],
     :param task_id: 问题id、视频id、文章id、话题id.
     :param data_type: 指定数据类型的采集 (answer or article or zvideo or hot_timing or question or general)
     :param urls: url请求列表
-    :param answer_count: (int) 采集指定数量的回答(问题才会有回答)。该值过大可能会导致多次请求；默认-1 不采集 0采集全部 >0采集指定的数量
+    :param drill_down_count: (int) 下钻内容采集数量（question），默认-1 不采集 0采集全部 >0采集指定的数量
     :param comment_count: (int) 采集指定数量的评论。该值过大可能会导致多次请求;默认-1 不采集 0采集全部 >0采集指定的数量
     :param similar_questions: (bool) 是否采集相类似的问题 默认 False 不采集
     :param similar_recommends: (bool) 是否采集相类似的推荐 默认 False 不采集
@@ -151,7 +151,7 @@ def common_crawler(task_id: Union[str],
     if data_type:
         options['data_type'] = data_type
     kwargs['pubdate_sort'] = kwargs.get('pubdate_sort', True)
-    options['answer_count'] = kwargs['answer_count'] = answer_count
+    options['drill_down_count'] = kwargs['drill_down_count'] = drill_down_count
     options['comment_count'] = comment_count
     if similar_questions:
         options['similar_questions'] = similar_questions
@@ -189,11 +189,10 @@ def user_crawler(user_id: Union[str],
     @ answer_count: 是否采集该账号的问答列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
     @ zvideo_count: 是否采集该账号的视频列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
     @ question_count： 是否采集该账号的提问列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    @ question_answer_count: 是否采集问题下的回答 默认-1不采集。0采集全部（可能会导致多次请求）；>0将采集指定数量
     @ article_count： 是否采集该账号的文章列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
     @ column_count： 是否采集该账号的专栏列表 -1不采集默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    @ column_item_count 是否采集专栏的下钻内容， 默认-1不采集。0采集全部（可能会导致多次请求）；>0将采集指定数量
     @ pin_count： 是否采集该账号的专栏列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
+    @ drill_down_count: 是否向下钻取内容（如提问的回答、专栏的内容、关注专栏的内容）-1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
     @ comment_count: 需要采集的回答、视频、文章、想法的评论数 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
     """
     options: Union[Dict[str, Any], Set[str]] = kwargs.setdefault('options', {})
@@ -206,8 +205,7 @@ def user_crawler(user_id: Union[str],
     options['article_count'] = kwargs.pop('article_count', -1)
     options['column_count'] = kwargs.pop('column_count', -1)
     options['pin_count'] = kwargs.pop('pin_count', -1)
-    options['column_item_count'] = kwargs.pop('column_item_count', -1)
-    options['question_answer_count'] = kwargs.pop('question_answer_count', -1)
+    options['drill_down_count'] = kwargs.pop('drill_down_count', -1)
     options['following'] = following
     options['followers'] = followers
     options['following_topics'] = following_topics

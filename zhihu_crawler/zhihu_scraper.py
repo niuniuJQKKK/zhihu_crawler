@@ -118,6 +118,8 @@ class ZhiHuScraper:
                     break
                 count += 1
                 yield result
+            if count >= question_count:
+                break
 
     def send(self, url, **kwargs):
         if not url:

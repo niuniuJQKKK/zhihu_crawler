@@ -433,9 +433,11 @@ class BaseExtractor:
                         'comment_content': comment_content,
                         'comment_pub_time': comment_info.get('created_time', 0),
                         'comment_vote_count': comment_info.get('vote_count', 0),
-                        'author_info': comment_info.get('author', {}).get('member', {}),
-                        'reply_to_author': comment_info.get('reply_to_author', {}).get('member', {})
+                        'author_info': {}
                     }
+                    reply_to_author = self.extract_author(comment_info.get('reply_to_author', {}).get('member', {}))
+                    info['reply_to_author'] = reply_to_author.get('author_info', {})
+                    info.update(self.extract_author(comment_info.get('author', {}).get('member', {})))
                     comments.append(info)
                     if comment_count <= len(comments):
                         break

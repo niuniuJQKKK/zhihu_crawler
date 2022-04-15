@@ -27,7 +27,7 @@ if __name__ == '__main__':
         print(info)
 ```
 
-__用户信息采集使用案例（数据格式请游览user_info.json）__:
+__用户信息采集使用案例（数据样例请游览user_info.json）__:
 ```
     for info in user_crawler('wo-men-de-tai-kong',
                              answer_count=2,
@@ -49,7 +49,7 @@ __用户信息采集使用案例（数据格式请游览user_info.json）__:
 
 ```
 
-__热点问题采集使用案例__:
+__热点问题采集使用案例（数据样例请游览hot_question.json）__:
 
 ```
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 """
-页面迭代器
+页面生成器
 """
 import json
 from zhihu_crawler.zhihu_types import *

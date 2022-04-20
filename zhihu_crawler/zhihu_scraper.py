@@ -1,11 +1,12 @@
 from requests_html import HTMLSession, AsyncHTMLSession
 from functools import partial
 from .page_iterators import *
-from .extractors import extract_data, extract_user, extract_hot_data
+from .extractors import extract_data, extract_user, extract_question_data
 from zhihu_utils.zhihu_utils import get_useragent
 import itertools
 from loguru import logger
 import asyncio
+import json
 
 
 class ZhiHuScraper:
@@ -48,7 +49,9 @@ class ZhiHuScraper:
         }
         self.requests_kwargs.update(proxies)
 
-    def search_crawler(self, key_word: Union[str], **kwargs):
+    def search_crawler(self, key_word: Union[str], **kwargs) -> Union[Iterator[ArticleType],
+                                                                      Iterator[AnswerType],
+                                                                      Iterator[VideoType]]:
         """
         通过关键词对检索结果进行采集
         :param key_word: 需要采集的关键词
@@ -58,21 +61,27 @@ class ZhiHuScraper:
         iter_search_pages_fn = partial(iter_search_pages, key_word=key_word, request_fn=self.send, **kwargs)
         return self._generic_crawler(extract_data, iter_search_pages_fn, **kwargs)
 
-    def question_crawler(self, question_id: Union[str], **kwargs):
+    def top_search_crawler(self, top_search_url, **kwargs) -> Keyword:
+        response = self.send(top_search_url)
+        data = json.loads(response.text)
+        keywords = []
+        for info in data.get('top_search', {}).get('words', []):
+            keywords.append(info.get('query', ''))
+        del response, data
+        return {
+            'keywords': keywords
+        }
+
+    def question_crawler(self, question_id: Union[str], **kwargs) -> Iterator[QuestionType]:
         """
         通过问题id采集
         """
         kwargs['scraper'] = self
         iter_question_pages_fn = partial(iter_question_pages, question_id=question_id, request_fn=self.send, **kwargs)
-        count = 0
-        answer_count = kwargs.get('drill_down_count')
-        for result in self._generic_crawler(extract_data, iter_question_pages_fn, **kwargs):
-            if count >= answer_count:
-                break
-            count += 1
-            yield result
+        kwargs['total_count'] = kwargs.get('drill_down_count', 0)
+        return self._generic_crawler(extract_data, iter_question_pages_fn, **kwargs)
 
-    def article_crawler(self, article_id: Union[str], **kwargs):
+    def article_crawler(self, article_id: Union[str], **kwargs) -> Iterator[ArticleType]:
         """
         通过文章id采集文章页数据
         """
@@ -80,7 +89,7 @@ class ZhiHuScraper:
         iter_article_pages_fn = partial(iter_article_pages, article_id=article_id, request_fn=self.send, **kwargs)
         return self._generic_crawler(extract_data, iter_article_pages_fn, **kwargs)
 
-    def video_crawler(self, video_id: Union[str], **kwargs):
+    def video_crawler(self, video_id: Union[str], **kwargs) -> Iterator[VideoType]:
         """
         通过视频id采集视频页数据
         """
@@ -88,7 +97,7 @@ class ZhiHuScraper:
         iter_video_pages_fn = partial(iter_video_pages, video_id=video_id, request_fn=self.send, **kwargs)
         return self._generic_crawler(extract_data, iter_video_pages_fn, **kwargs)
 
-    def user_crawler(self, user_id: Union[str], **kwargs):
+    def user_crawler(self, user_id: Union[str], **kwargs) -> Iterator[UserType]:
         """
         通过账号id采集个人主页数据
         """
@@ -96,30 +105,24 @@ class ZhiHuScraper:
         iter_user_page_fn = partial(iter_user_pages, user_id=user_id, request_fn=self.send, **kwargs)
         return self._generic_crawler(extract_user, iter_user_page_fn, **kwargs)
 
-    def hot_list_crawler(self, **kwargs):
+    def hot_list_crawler(self, **kwargs) -> Iterator[QuestionType]:
         """
         首页热榜采集
         """
         kwargs['scraper'] = self
         iter_hot_page_fn = partial(iter_hot_list_pages, request_fn=self.send, **kwargs)
-        return self._generic_crawler(extract_hot_data, iter_hot_page_fn, **kwargs)
+        return self._generic_crawler(extract_question_data, iter_hot_page_fn, **kwargs)
 
-    def hot_question_crawler(self, domains, **kwargs):
+    def hot_question_crawler(self, domains, **kwargs) -> Iterator[QuestionType]:
         """
         热点问题采集
         """
         kwargs['scraper'] = self
-        question_count = kwargs.get('question_count', 0)
+        kwargs['total_count'] = kwargs.pop('question_count', 0)
         for domain in domains:
             iter_hot_question_page_fn = partial(iter_hot_question_pages, domain=domain, request_fn=self.send, **kwargs)
-            count = 0
-            for result in self._generic_crawler(extract_hot_data, iter_hot_question_page_fn, **kwargs):
-                if count >= question_count:
-                    break
-                count += 1
+            for result in self._generic_crawler(extract_question_data, iter_hot_question_page_fn, **kwargs):
                 yield result
-            if count >= question_count:
-                break
 
     def send(self, url, **kwargs):
         if not url:
@@ -141,12 +144,21 @@ class ZhiHuScraper:
             if x_zse_96 or cookie:
                 self.session.headers.update(get_headers(url) or {})
                 self.session.headers.update(cookie)
-            try:
-                response = self.session.get(url, proxies=proxies, **self.requests_kwargs)
-                response.raise_for_status()
-                return response
-            except Exception as e:
-                logger.error(f'http error: {e}')
+            retry_limit = 6
+            response = None
+            for retry in range(1, retry_limit + 1):
+                try:
+                    response = self.session.get(url, proxies=proxies, **self.requests_kwargs)
+                    response.raise_for_status()
+                    return response
+                except Exception as e:
+                    if retry < retry_limit:
+                        sleep_time = retry * 2
+                        logger.debug(f'重连第{retry}次，休眠{sleep_time}秒, 异常：{e}')
+                        time.sleep(sleep_time)
+                        # 重新获取代理
+                        # proxies = {'http': get_proxy(), 'https': get_proxy()}
+            assert response is not None
         if isinstance(url, list):  # 使用协程请求
             return self.generic_response(url, x_zse_96=x_zse_96, proxies=proxies)
 
@@ -187,9 +199,12 @@ class ZhiHuScraper:
             options = {}
         elif isinstance(options, set):
             options = {k: True for k in options}
+        total_count = kwargs.get('total_count', 0)
+        count = 0
         for i, page in zip(counter, iter_pages_fn()):
-            if not page:
-                break
             for element in page:
+                if 0 < total_count <= count:
+                    return None
+                count += 1
                 info = extract_fn(element, options=options, request_fn=self.send)
                 yield info

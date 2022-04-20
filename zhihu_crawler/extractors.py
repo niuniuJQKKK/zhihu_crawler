@@ -8,19 +8,21 @@ from loguru import logger
 import re
 import copy
 import json
-from zhihu_utils.zhihu_utils import urljoin, get_headers, quote, extract_time, generating_page_links
+from zhihu_utils.zhihu_utils import urljoin, extract_time, generating_page_links
 
 
-def extract_data(raw_html, options: Options, request_fn: RequestFunction, full_html=None):
+def extract_data(raw_html, options: Options, request_fn: RequestFunction, full_html=None) -> Union[QuestionType,
+                                                                                                   AnswerType,
+                                                                                                   ArticleType]:
     return BaseExtractor(raw_html, options, request_fn, full_html).extract_data()
 
 
-def extract_user(raw_html, options: Options, request_fn: RequestFunction, full_html=None):
+def extract_user(raw_html, options: Options, request_fn: RequestFunction, full_html=None) -> UserType:
     return UserExtractor(raw_html, options, request_fn, full_html).extract_data()
 
 
-def extract_hot_data(raw_html, options: Options, request_fn: RequestFunction, full_html=None):
-    return HotQuestionExtractor(raw_html, options, request_fn, full_html).extract_data()
+def extract_question_data(raw_html, options: Options, request_fn: RequestFunction, full_html=None) -> QuestionType:
+    return QuestionExtractor(raw_html, options, request_fn, full_html).extract_data()
 
 
 def init_question_reaction():
@@ -150,7 +152,7 @@ class BaseExtractor:
         del temp_info
         return self.info
 
-    def extract_id(self) -> Dict[str, str]:
+    def extract_id(self) -> PartialType:
         data_id = self.element.get('id', '')
         if not data_id:
             data_id = self.element.get('zvideo_id', '')
@@ -158,7 +160,7 @@ class BaseExtractor:
             f'{self.type}_id': data_id
         }
 
-    def extract_video_id(self) -> Dict[str, str]:
+    def extract_video_id(self) -> PartialType:
         """
         清洗视频id
         """
@@ -171,7 +173,7 @@ class BaseExtractor:
             'video_id': video_id
         }
 
-    def extract_title(self) -> Dict[str, str]:
+    def extract_title(self) -> PartialType:
         """
         标题
         """
@@ -186,7 +188,7 @@ class BaseExtractor:
             'title': title
         }
 
-    def extract_content(self, content=None) -> Dict[str, str]:
+    def extract_content(self, content=None) -> PartialType:
         content = self.element.get('content', '') if content is None else content
         if content and self.ele_regex.findall(content):
             contents = []
@@ -200,7 +202,7 @@ class BaseExtractor:
             'content': content
         }
 
-    def extract_pub_time(self) -> Dict[str, Union[str, int]]:
+    def extract_pub_time(self) -> PartialType:
         """
         编辑时间
         :return:
@@ -209,7 +211,7 @@ class BaseExtractor:
             'pub_time': extract_time(self.element).get('pub_time')
         }
 
-    def extract_edit_time(self) -> Dict[str, Union[str, int]]:
+    def extract_edit_time(self) -> PartialType:
         """
         编辑时间
         :return:
@@ -218,7 +220,7 @@ class BaseExtractor:
             'edit_time': extract_time(self.element).get('edit_time')
         }
 
-    def extract_question(self) -> Dict[str, Dict[str, str]]:
+    def extract_question(self) -> PartialType:
         """
         清洗问题信息
         :return:
@@ -252,7 +254,7 @@ class BaseExtractor:
             }
         }
 
-    def extract_url(self):
+    def extract_url(self) -> PartialType:
         """
         url 清洗
         """
@@ -267,7 +269,7 @@ class BaseExtractor:
             'source_url': url
         }
 
-    def extract_pictures(self) -> Dict[str, str]:
+    def extract_pictures(self) -> PartialType:
         """
         图片清洗
         """
@@ -283,7 +285,7 @@ class BaseExtractor:
             'pictures': pic
         }
 
-    def extract_video_url(self) -> Dict[str, str]:
+    def extract_video_url(self) -> PartialType:
         """
         视频链接
         """
@@ -295,7 +297,7 @@ class BaseExtractor:
                 video_url = result[0] if result else ''
         return {'video_url': video_url}
 
-    def extract_author(self, author_info=None):
+    def extract_author(self, author_info=None) -> PartialType:
         """
         用户信息
         """
@@ -320,7 +322,7 @@ class BaseExtractor:
             }
         }
 
-    def extract_up_count(self) -> Dict[str, str]:
+    def extract_up_count(self) -> PartialType:
         """
         赞同数
         """
@@ -328,7 +330,7 @@ class BaseExtractor:
             'up_count': self.element.get('voteup_count', 0)
         }
 
-    def extract_appreciate_count(self) -> Dict[str, str]:
+    def extract_appreciate_count(self) -> PartialType:
         """
         赞赏数
         """
@@ -336,7 +338,7 @@ class BaseExtractor:
             'appreciate_count': self.element.get('reward_info', {}).get('reward_member_count', 0)
         }
 
-    def extract_comment_count(self) -> Dict[str, str]:
+    def extract_comment_count(self) -> PartialType:
         """
         评论数
         """
@@ -344,7 +346,7 @@ class BaseExtractor:
             'comment_count': self.element.get('comment_count', 0) or self.element.get('commentCount', 0)
         }
 
-    def extract_labels(self) -> Dict[str, List]:
+    def extract_labels(self) -> PartialType:
         """
        详情页的 标签
        :return:
@@ -357,14 +359,14 @@ class BaseExtractor:
             labels = label_ele.attrs.get('content').split(',') if label_ele else []
         return {'labels': labels}
 
-    def extract_title_pictures(self) -> Dict[str, str]:
+    def extract_title_pictures(self) -> PartialType:
         img_str = '#'.join([self.element.get('titleImage', '') or self.element.get('title_image', '')])
         if not img_str and self._detail_response:
             images = self._detail_response.html.find('div.QuestionHeader-detail img')
             img_str = '#'.join(img.attrs.get('src') for img in images if img)
         return {'title_pictures': img_str}
 
-    def extract_title_description(self) -> Dict[str, str]:
+    def extract_title_description(self) -> PartialType:
         """
         详情页的标题描述
         :return:
@@ -377,7 +379,7 @@ class BaseExtractor:
         desc = re.sub(r'<.*>|<em>|</em>', '', desc)
         return {'title_description': desc}
 
-    def extract_relevant_query(self) -> Dict[str, List]:
+    def extract_relevant_query(self) -> PartialType:
         """
         清洗相关搜索关键词列表
         :return:
@@ -387,7 +389,7 @@ class BaseExtractor:
             'relevant_query': [query_dict.get('query' '') for query_dict in query_list if isinstance(query_dict, dict)]
         }
 
-    def extract_play_count(self) -> Dict[str, int]:
+    def extract_play_count(self) -> PartialType:
         """
        视频播放量
        :return:
@@ -396,12 +398,12 @@ class BaseExtractor:
             'play_count': self.element.get('play_count', 0) or self.element.get('playCount', 0)
         }
 
-    def extract_like_count(self) -> Dict[str, int]:
+    def extract_like_count(self) -> PartialType:
         return {
             'like_count': self.element.get('liked_count', 0)
         }
 
-    def extract_comments(self, comment_count=0, comment_url=None) -> Dict[str, List]:
+    def extract_comments(self, comment_count=0, comment_url=None) -> CommentType:
         """
         评论数据采集. 理论上该部分应该独立采集
         :return:
@@ -433,7 +435,7 @@ class BaseExtractor:
                         'comment_content': comment_content,
                         'comment_pub_time': comment_info.get('created_time', 0),
                         'comment_vote_count': comment_info.get('vote_count', 0),
-                        'author_info': {}
+                        'author_info': {},
                     }
                     reply_to_author = self.extract_author(comment_info.get('reply_to_author', {}).get('member', {}))
                     info['reply_to_author'] = reply_to_author.get('author_info', {})
@@ -445,7 +447,7 @@ class BaseExtractor:
                     break
         return {'comments': comments}
 
-    def extract_meta_data(self, start_url, type_name, **kwargs):
+    def extract_meta_data(self, start_url, type_name, **kwargs) -> PartialType:
         """
         获取账号的回答、文章、视频、专栏、提问等数据
         :param start_url: 请求数据的接口
@@ -490,7 +492,7 @@ class BaseExtractor:
         return {type_name: data_list}
 
 
-class HotQuestionExtractor(BaseExtractor):
+class QuestionExtractor(BaseExtractor):
     """
     热榜问题
     """
@@ -837,6 +839,7 @@ class UserFollowingTopicExtractor(UserExtractor):
     """
     用户关注的话题
     """
+
     def extract_data(self):
         topic = self.extract_topic()
         topic['feeds'] = self.extract_feed(topic)
@@ -888,5 +891,3 @@ class UserFollowingTopicExtractor(UserExtractor):
                     if len(feeds) >= topic_feed_count:
                         break
             return feeds
-
-

@@ -12,13 +12,13 @@ def set_cookies(cookies):
 def search_crawler(key_word: Optional[str] = None,
                    comment_count: Optional[int] = -1,
                    similar_keywords: Union[bool] = False,
-                   count: Optional[int] = -1,
-                   **kwargs):
+                   count: Optional[int] = 0,
+                   **kwargs) -> Union[Iterator[AnswerType], Iterator[ArticleType], Iterator[VideoType]]:
     """
     关键词搜索采集（answer、article、video...）
     :param key_word: 关键词
     :param kwargs:
-    :param count: (int) 采集指定数量的回答、视频、文章。该值过大可能会导致多次请求。默认-1 不采集 0采集全部 >0采集指定的数量
+    :param count: (int) 采集指定数量的回答、视频、文章。该值过大可能会导致多次请求。-1 不采集 0采集全部（默认） >0采集指定的数量
     :param comment_count: (int) 采集指定数量的评论。该值过大可能会导致多次请求。默认-1 不采集 0采集全部 >0采集指定的数量
     :param similar_keywords: (bool) 是否采集相似关键词列表
     @ page_limit (int): 需要采集的页数, 默认为constants下的 DEFAULT_PAGE_LIMIT
@@ -45,40 +45,31 @@ def search_crawler(key_word: Optional[str] = None,
     kwargs['sort'] = options['sort'] = kwargs.get('sort', None)
     kwargs['time_interval'] = options['time_interval'] = kwargs.get('time_interval', None)
     cookies = kwargs.pop('cookies', None)
+    kwargs['total_count'] = count
     if cookies:
         pass
     data_types = [data_types] if isinstance(data_types, str) else data_types
     if isinstance(data_types, list):
         for data_type in data_types:
             kwargs['data_type'] = data_type
-            num = 0
             for result in _scraper.search_crawler(key_word, **kwargs):
-                if num >= count:
-                    break
-                num += 1
                 yield result
-    else:
-        return _scraper.search_crawler(key_word, **kwargs)
 
 
 def top_search_crawl(top_search_url: Optional[str] = TOP_SEARCH_URL,
-                     comment_count: Optional[int] = 0,
-                     similar_keywords: Union[bool] = False,
-                     **kwargs):
+                     **kwargs) -> Keyword:
     """
     热搜采集
     :param top_search_url: 热搜固定url
-    :param comment_count:(int) 采集指定数量的评论。该值过大可能会导致多次请求
-    :param similar_keywords:(bool) 是否采集相似关键词列表
     page_limit (int): 需要采集的页数, 默认为constants下的 DEFAULT_PAGE_LIMIT
     :return:
     """
-    pass
+    return _scraper.top_search_crawler(top_search_url=top_search_url, **kwargs)
 
 
 def hot_questions_crawler(period: Union[str] = 'hour',
                           domains: Union[str, list, tuple] = 0,
-                          **kwargs):
+                          **kwargs) -> Iterator[QuestionType]:
     """
     问题热榜
     url = https://www.zhihu.com/knowledge-plan/hot-question/hot/0/hour 小时榜
@@ -104,7 +95,7 @@ def hot_questions_crawler(period: Union[str] = 'hour',
     return _scraper.hot_question_crawler(domains=domains, **kwargs)
 
 
-def hot_list_crawler(drill_down_count: Union[int] = -1, **kwargs):
+def hot_list_crawler(drill_down_count: Union[int] = -1, **kwargs) -> Iterator[QuestionType]:
     """
     首页热榜
     https://www.zhihu.com/hot
@@ -118,26 +109,20 @@ def hot_list_crawler(drill_down_count: Union[int] = -1, **kwargs):
     return _scraper.hot_list_crawler(**kwargs)
 
 
-def question_newest():
-    """
-    https://www.zhihu.com/question/waiting?type=new
-    """
-    pass
-
-
 def common_crawler(task_id: Union[str],
                    data_type: Optional[str] = None,
-                   urls: Optional[Iterator[str]] = None,
                    drill_down_count: Optional[int] = -1,
                    comment_count: Optional[int] = -1,
                    similar_questions: Optional[bool] = False,
                    similar_recommends: Optional[bool] = False,
-                   **kwargs):
+                   **kwargs) -> Union[Iterator[AnswerType],
+                                      Iterator[QuestionType],
+                                      Iterator[VideoType],
+                                      Iterator[ArticleType]]:
     """
     通用采集(问答、视频、专栏、文章、话题)
     :param task_id: 问题id、视频id、文章id、话题id.
     :param data_type: 指定数据类型的采集 (answer or article or zvideo or hot_timing or question or general)
-    :param urls: url请求列表
     :param drill_down_count: (int) 下钻内容采集数量（question），默认-1 不采集 0采集全部 >0采集指定的数量
     :param comment_count: (int) 采集指定数量的评论。该值过大可能会导致多次请求;默认-1 不采集 0采集全部 >0采集指定的数量
     :param similar_questions: (bool) 是否采集相类似的问题 默认 False 不采集
@@ -165,7 +150,6 @@ def common_crawler(task_id: Union[str],
         return _scraper.video_crawler(video_id=task_id, **kwargs)
     if data_type not in (ARTICLE, VIDEO, QUESTION):
         raise ValueError('匹配不到可以采集的数据类型，请校对data_type的值')
-    return
 
 
 def user_crawler(user_id: Union[str],
@@ -175,7 +159,7 @@ def user_crawler(user_id: Union[str],
                  following_columns: Union[int] = -1,
                  following_questions: Union[int] = -1,
                  following_collections: Union[int] = -1,
-                 **kwargs):
+                 **kwargs) -> Iterator[UserType]:
     """
     账号采集
     :param user_id: (str) 账号id 如 https://www.zhihu.com/people/kenneth-pan/answers中 kenneth-pan为user_id

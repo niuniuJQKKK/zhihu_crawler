@@ -3,7 +3,7 @@
 
 ### 项目目录:
 #### zhihu_crawler 核心代码区
-* ____init__.py__ 为程序的对外统一入口  
+* __\_\_init\_\_.py__ 为程序的对外统一入口  
 * __constants.py__ 常量  
 * __exceptions.py__ 自定义异常  
 * __extractors.py__ 数据清洗  

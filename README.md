@@ -2,16 +2,16 @@
 支持获取知乎的关键词搜索、热榜、用户、回答、专栏文章、评论、关联关键词、关联文章等信息。代码思路来源于facebook_scraper
 
 ### 项目目录:
-##### zhihu_crawler 核心代码区
-* __zhihu_crawler/__init__.py__ 为程序的对外统一入口  
+#### zhihu_crawler 核心代码区
+* ____init__.py__ 为程序的对外统一入口  
 * __constants.py__ 常量  
 * __exceptions.py__ 自定义异常  
 * __extractors.py__ 数据清洗  
 * __page_iterators.py__ 页面处理  
 * __zhihu_scraper.py__ 页面请求、cookie设置  
 * __zhihu_types.py__ 类型提示、检查。项目自定义类型 
-##### common 重要参数的加密
-##### zhihu_utils 工具包
+#### common 重要参数的加密
+#### zhihu_utils 工具包
 __注意事项__ 项目内有部分异步操作，在模块引用之前需要使用猴子补丁; 同时该项目没有对ip限制、登录做针对性处理。
 
 ```

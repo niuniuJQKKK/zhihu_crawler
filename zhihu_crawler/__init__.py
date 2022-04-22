@@ -82,7 +82,7 @@ def hot_questions_crawler(period: Union[str] = 'hour',
                     1018-健康      1019-艺术     1020-音乐      1021-设计      1022-影视娱乐   1023-宠物
                     1024-体育电竞   1025-运动健身  1026-动漫游戏  1027-美食      1028-旅行       1029-时尚
     @ question_count: 采集问题的数量， 默认0采集所有； >0 采集指定数量
-    @ drill_down_count: (int) 下钻内容采集数量，热榜下钻内容数据量大，默认-1 不采集 0采集全部 >0采集指定的数量
+    @ drill_down_count: (int) 下钻内容(answer)采集数量，热榜下钻内容数据量大，默认-1 不采集 0采集全部 >0采集指定的数量
     @ comment_count: (int) 采集指定数量的评论。该值过大可能会导致多次请求;默认-1 不采集 0采集全部 >0采集指定的数量
     """
     if isinstance(domains, int or str):
@@ -122,8 +122,8 @@ def common_crawler(task_id: Union[str],
     """
     通用采集(问答、视频、专栏、文章、话题)
     :param task_id: 问题id、视频id、文章id、话题id.
-    :param data_type: 指定数据类型的采集 (answer or article or zvideo or hot_timing or question or general)
-    :param drill_down_count: (int) 下钻内容采集数量（question），默认-1 不采集 0采集全部 >0采集指定的数量
+    :param data_type: 指定数据类型的采集 (answer or article or zvideo or question)
+    :param drill_down_count: (int) 下钻内容（answer）采集，默认-1 不采集 0采集全部 >0采集指定的数量
     :param comment_count: (int) 采集指定数量的评论。该值过大可能会导致多次请求;默认-1 不采集 0采集全部 >0采集指定的数量
     :param similar_questions: (bool) 是否采集相类似的问题 默认 False 不采集
     :param similar_recommends: (bool) 是否采集相类似的推荐 默认 False 不采集
@@ -164,20 +164,21 @@ def user_crawler(user_id: Union[str],
     账号采集
     :param user_id: (str) 账号id 如 https://www.zhihu.com/people/kenneth-pan/answers中 kenneth-pan为user_id
                     数据api：https://api.zhihu.com/people/user_id
-    :param following: 是否采集该账号关注人列表；-1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    :param followers: 是否采集关注该账号的人列表 -1不采集默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    :param following_topics: 是否采集该账号关注的话题列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    :param following_columns: 是否采集该账号关注的专栏列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    :param following_questions: 是否采集该账号关注的问题列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    :param following_collections: 是否采集该账号关注的收藏列表 -1不采集。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    @ answer_count: 是否采集该账号的问答列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    @ zvideo_count: 是否采集该账号的视频列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    @ question_count： 是否采集该账号的提问列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    @ article_count： 是否采集该账号的文章列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    @ column_count： 是否采集该账号的专栏列表 -1不采集默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    @ pin_count： 是否采集该账号的专栏列表 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    @ drill_down_count: 是否向下钻取内容（如提问的回答、专栏的内容、关注专栏的内容）-1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
-    @ comment_count: 需要采集的回答、视频、文章、想法的评论数 -1不采集 默认。0采集全部（可能会导致多次请求）；>0将采集指定数量
+    :param following: 是否采集该账号关注人列表；-1不采集（默认）。0采集全部（可能会导致多次请求）；>0将采集指定数量
+    :param followers: 是否采集关注该账号的人列表；参数值规则如上
+    :param following_topics: 是否采集该账号关注的话题列表；参数值规则如上
+    :param following_columns: 是否采集该账号关注的专栏列表；参数值规则如上
+    :param following_questions: 是否采集该账号关注的问题列表；参数值规则如上
+    :param following_collections: 是否采集该账号关注的收藏列表；参数值规则如上
+    @ answer_count: 是否采集该账号的问答列表；参数值规则如上
+    @ zvideo_count: 是否采集该账号的视频列表；参数值规则如上
+    @ question_count： 是否采集该账号的提问列表；参数值规则如上
+    @ article_count： 是否采集该账号的文章列表；参数值规则如上
+    @ column_count： 是否采集该账号的专栏列表；参数值规则如上
+    @ pin_count： 是否采集该账号的专栏列表；参数值规则如上
+    @ collection_count: 是否采集该账号的收藏夹内容；参数值规则如上
+    @ drill_down_count: 是否向下钻取内容（如提问的回答、专栏下的文章、收藏话题下的内容等）；参数值规则如上
+    @ comment_count: 需要采集的回答、视频、文章、想法的评论数；参数值规则如上
     """
     options: Union[Dict[str, Any], Set[str]] = kwargs.setdefault('options', {})
     if isinstance(options, set):
@@ -190,6 +191,7 @@ def user_crawler(user_id: Union[str],
     options['column_count'] = kwargs.pop('column_count', -1)
     options['pin_count'] = kwargs.pop('pin_count', -1)
     options['drill_down_count'] = kwargs.pop('drill_down_count', -1)
+    options['collection_count'] = kwargs.pop('collection_count', -1)
     options['following'] = following
     options['followers'] = followers
     options['following_topics'] = following_topics

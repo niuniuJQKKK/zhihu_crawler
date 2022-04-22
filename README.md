@@ -58,7 +58,7 @@ __热点问题采集使用案例（数据样例请游览hot_question.json）__:
 ```
 if __name__ == '__main__':
     # 采集 前10个问题, 每个问题采集10条回答
-    for info in hot_questions_crawl(question_count=10, answer_count=10):
+    for info in hot_questions_crawl(question_count=10, drill_down_count=10):
         print(info)
 
     # 可传入period 指定热榜性质。如小时榜、日榜、周榜、月榜

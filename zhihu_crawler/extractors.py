@@ -682,6 +682,7 @@ class UserExtractor(BaseExtractor):
             'user_columns_count': self.element.get('columns_count', 0),
             'user_zvideo_count': self.element.get('zvideo_count', 0),
             'user_pins_count': self.element.get('pins_count', 0),
+            'user_favorite_count': self.element.get('favorite_count', 0),  # 用户创建的收藏夹的数量
             'user_favorited_count': self.element.get('favorited_count', 0),  # 获得其余用户的收藏数
             'user_reactions_count': self.element.get('reactions_count', 0),
             'user_shared_count': self.element.get('shared_count', 0),

@@ -3,7 +3,7 @@ monkey.patch_all()
 from zhihu_crawler import *
 
 if __name__ == '__main__':
-    for info in search_crawler(key_word='滴普', count=30, similar_keywords=True):
+    for info in search_crawler(key_word='滴普', count=30):
         # print(info)
         pass
 

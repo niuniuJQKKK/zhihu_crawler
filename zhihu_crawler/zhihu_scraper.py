@@ -136,10 +136,11 @@ class ZhiHuScraper:
         @ x_zse_96: 是否需要x_zse_96参数加密
         """
         assert url is not None, 'url is null'
-        x_zse_96 = kwargs.pop('x_zse_96', False)
-        d_c0 = re.sub('d_c0=|;.*', '', self.default_headers.get('cookie', ''))
+        d_c0 = re.sub('d_c0=|;.*', '', self.default_headers.get('cookie', '')) or ''
+        if d_c0:
+            kwargs['d_c0'] = d_c0
         if isinstance(url, str):
-            if x_zse_96:
+            if kwargs.get('x_zse_96', False):
                 self.default_headers.update(get_headers(url, d_c0) or {})
             self.session.headers.update(self.default_headers)
             retry_limit = 6
@@ -158,19 +159,19 @@ class ZhiHuScraper:
                         # proxies = {'http': get_proxy(), 'https': get_proxy()}
             assert response is not None, f'重新请求{retry_limit}次， response为空'
         if isinstance(url, list):  # 使用协程请求
-            return self.generic_response(url, x_zse_96=x_zse_96)
+            return self.generic_response(url, **kwargs)
 
-    def generic_response(self, urls, x_zse_96):
+    def generic_response(self, urls, **kwargs):
         urls = [urls[i: i + ASYNC_COUNT] for i in range(0, len(urls), ASYNC_COUNT)]
         for sub_urls in urls:
-            tasks = [lambda url=url: self.async_get(url, x_zse_96=x_zse_96) for url in sub_urls]
+            tasks = [lambda url=url: self.async_get(url, **kwargs) for url in sub_urls]
             results = self.async_session.run(*tasks)
             yield results
 
     async def async_get(self, url, **kwargs):
-        if kwargs.get('x_zse_96'):
-            self.async_session.headers.update(get_headers(url))
-        proxies = kwargs.get('proxies', {})
+        if kwargs.get('x_zse_96', False):
+            self.default_headers.update(get_headers(url, kwargs.get('d_c0')) or {})
+        self.async_session.headers.update(self.default_headers)
         response = await self.async_session.get(url, **self.requests_kwargs)
         if response and response.status_code != 200:
             logger.error(f'request url: {url}, response code: {response.status_code}')

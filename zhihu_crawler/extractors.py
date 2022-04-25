@@ -457,7 +457,7 @@ class BaseExtractor:
         @ headers 是否需要加密参数
         :return: 返回对应数据集合
         """
-        total_count = kwargs.get('total_count', 0)
+        total_count = kwargs.pop('total_count', 0)
         if total_count == 0:
             return
         page_urls = generating_page_links(start_url, total_count)
@@ -730,13 +730,6 @@ class UserQuestionExtractor(UserExtractor):
             total_count = count if 0 < count < total_count else total_count
             url = QUESTION_ANSWERS_URL.format(question_id=question_info.get('question_id', ''))
             answer_info = self.extract_meta_data(url, type_name='answers', total_count=total_count)
-            # ********* 采集问题回答的评论  ********* #
-            for answer in answer_info.get('answers', []):
-                answer_id = answer.get('answer_id')
-                comment_url = COMMENT_URL.format(data_type='answers', id=answer_id)
-                comment_count = answer.get('comment_count')
-                comments_info = self.extract_comments(comment_count=comment_count, comment_url=comment_url) or {}
-                answer.update(comments_info)
             question_info.update(answer_info)
         return question_info
 
@@ -828,13 +821,6 @@ class UserColumnExtractor(UserExtractor):
             items = self.extract_meta_data(start_url=url,
                                            type_name='column_articles',
                                            total_count=total_count) or {}
-            # *********  采集专栏文章的评论 ********* #
-            for item in items.get('column_items', []):
-                article_id = item.get('article_id')
-                comment_count = item.get('comment_count')
-                comment_url = COMMENT_URL.format(data_type='articles', id=article_id)
-                comments_info = self.extract_comments(comment_count=comment_count, comment_url=comment_url) or {}
-                item.update(comments_info)
             column_info.update(items)
         return column_info
 

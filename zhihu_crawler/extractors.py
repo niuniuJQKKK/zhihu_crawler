@@ -124,7 +124,7 @@ class BaseExtractor:
                 partial_info = method()
                 if partial_info is None:
                     continue
-                logger.warning(f'method: {method.__name__} return: {partial_info}')
+                # logger.warning(f'method: {method.__name__} return: {partial_info}')
                 self.info.update(partial_info)
             except Exception as ex:
                 logger.debug(f'method: {method.__name__} error:{ex}')
@@ -146,6 +146,7 @@ class BaseExtractor:
             total_count = answer_count if 0 < answer_count < total_count else total_count
             url = QUESTION_ANSWERS_URL.format(question_id=question_id)
             self.extract_meta_data(url, type_name='answers', total_count=total_count)
+
         self.info['type'] = self.type
         # 采集评论:
         self.info.update(self.extract_comments())
@@ -532,8 +533,13 @@ class UserExtractor(BaseExtractor):
         # ********* 用户回答列表采集 ********* #
         total_count = self.info['user_answer_count']
         count = self.options.get('answer_count')
+        sort = self.options.get('sort', '')
         if count > -1 and total_count > 0:
             start_url = USER_ANSWERS_URL.format(user_id=user_id)
+            if sort == 'included':
+                start_url = re.sub(r'/answers\?', '/marked-answers?', start_url)
+            else:
+                start_url = re.sub('sort_by=created', f'sort_by={sort}', start_url)
             total_count = count if 0 < count < total_count else total_count
             result = self.extract_meta_data(start_url=start_url,
                                             type_name='answers',
@@ -557,6 +563,11 @@ class UserExtractor(BaseExtractor):
         if count > -1 and total_count > 0:
             total_count = count if 0 < count < total_count else total_count
             start_url = USER_ARTICLE_URL.format(user_id=user_id)
+            if sort == 'included':
+                start_url = start_url.replace('/articles?', '/included-articles?').\
+                    replace('sort_by=created', 'sort_by=included')
+            else:
+                start_url = re.sub('sort_by=created', f'sort_by={sort}', start_url)
             result = self.extract_meta_data(start_url=start_url,
                                             type_name='articles',
                                             x_zse_96=True,

@@ -135,6 +135,7 @@ class ZhiHuScraper:
         请求方法，在该方法中获取代理及x_zse_96参数加密
         @ x_zse_96: 是否需要x_zse_96参数加密
         """
+        assert url is not None
         x_zse_96 = kwargs.pop('x_zse_96', False)
         cookie = kwargs.pop('cookie', {})
         # 获取代理信息

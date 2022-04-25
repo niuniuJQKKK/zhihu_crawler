@@ -11,7 +11,6 @@ def set_cookies(cookies):
 
 def search_crawler(key_word: Optional[str] = None,
                    comment_count: Optional[int] = -1,
-                   similar_keywords: Union[bool] = False,
                    count: Optional[int] = 0,
                    **kwargs) -> Union[Iterator[AnswerType], Iterator[ArticleType], Iterator[VideoType]]:
     """
@@ -20,7 +19,6 @@ def search_crawler(key_word: Optional[str] = None,
     :param kwargs:
     :param count: (int) 采集指定数量的回答、视频、文章。该值过大可能会导致多次请求。-1 不采集 0采集全部（默认） >0采集指定的数量
     :param comment_count: (int) 采集指定数量的评论。该值过大可能会导致多次请求。默认-1 不采集 0采集全部 >0采集指定的数量
-    :param similar_keywords: (bool) 是否采集相似关键词列表
     @ page_limit (int): 需要采集的页数, 默认为constants下的 DEFAULT_PAGE_LIMIT
     @ data_type:（str or list or set or tuple） 获取数据类型 可选择（answer、article、zvideo） 默认三个类型都会采集
     @ sort: (str or None)排序。默认sort=None综合排序，sort=created_time最新发布时间排序; sort=upvoted_count最多赞同排序
@@ -38,8 +36,6 @@ def search_crawler(key_word: Optional[str] = None,
     options['drill_down_count'] = kwargs.pop('drill_down_count', -1)
     if comment_count:
         options['comment_count'] = comment_count
-    if similar_keywords:
-        options['similar_keywords'] = similar_keywords
     data_types = kwargs.get('data_type', [ANSWER, ARTICLE, VIDEO])
     kwargs['data_type'] = options['data_type'] = data_types
     kwargs['sort'] = options['sort'] = kwargs.get('sort', None)
@@ -177,6 +173,7 @@ def user_crawler(user_id: Union[str],
     @ column_count： 是否采集该账号的专栏列表；参数值规则如上
     @ pin_count： 是否采集该账号的专栏列表；参数值规则如上
     @ collection_count: 是否采集该账号的收藏夹内容；参数值规则如上
+    @ sort: (str)排序。默认sort=created 时间排序，sort=included 被收录回答/文章排序; sort=voteups最多赞同排序
     @ drill_down_count: 是否向下钻取内容（如提问的回答、专栏下的文章、收藏话题下的内容等）；参数值规则如上
     @ comment_count: 需要采集的回答、视频、文章、想法的评论数；参数值规则如上
     """
@@ -198,4 +195,5 @@ def user_crawler(user_id: Union[str],
     options['following_columns'] = following_columns
     options['following_questions'] = following_questions
     options['following_collections'] = following_collections
+    kwargs['sort'] = options['sort'] = kwargs.get('sort', 'created')
     return _scraper.user_crawler(user_id, **kwargs)

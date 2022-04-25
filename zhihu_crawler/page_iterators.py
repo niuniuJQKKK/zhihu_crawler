@@ -5,9 +5,8 @@ import json
 from zhihu_crawler.zhihu_types import *
 from zhihu_crawler.constants import *
 from loguru import logger
-import time
 import re
-from zhihu_utils.zhihu_utils import get_proxy, get_headers, quote, urljoin, unquote
+from utils import get_proxy, get_headers, quote, urljoin, unquote
 
 
 def iter_search_pages(key_word: str, request_fn: RequestFunction, **kwargs) -> Iterator[Page]:
@@ -26,15 +25,6 @@ def iter_search_pages(key_word: str, request_fn: RequestFunction, **kwargs) -> I
             start_url = start_url + f'&sort={sort}'
         if time_interval:
             start_url = start_url + f'&time_interval={time_interval}'
-
-    # ----------- 需要额外加上 cookie 才能请求成功 --------- #
-    kwargs['cookie'] = {
-        'cookie': 'd_c0="AvAQDHN4mxSPTtVyJn9kQSMi43V1kPWH_qc=|1646810832"; '
-                  'z_c0=2|1:0|10:1647511173|4:z_c0|92:Mi4xMWtwS053QUFBQUFDO'
-                  'EJBTWMzaWJGQ1lBQUFCZ0FsVk5oVlFnWXdCMEUyQW5RZ0dGb1hZT1NDRX'
-                  'RybF81QUtmU3hR|d37c9324eb2e6a989a4bb9e3fb145d33ead3c23365'
-                  '3e8c0ea9eda77883c098eb;'
-    }
     return generic_iter_pages(start_url, PageParser, request_fn, **kwargs)
 
 
@@ -88,6 +78,7 @@ def iter_hot_question_pages(domain: str, request_fn: RequestFunction, **kwargs) 
 
 def generic_iter_pages(start_url, page_parser_cls, request_fn, **kwargs) -> Iterator[Page]:
     next_url = start_url
+    response = None
     while next_url:
         try:
             response = request_fn(next_url, **kwargs)
@@ -121,7 +112,7 @@ class PageParser:
 
     def _parse(self):
         jsons = []
-        assert self.response is not None
+        assert self.response is not None, 'response is null'
         if self.json_prefix in self.response.text:
             jsons = self.json_regex.findall(self.response.text)
         self.json_data = json.loads(self.response.text) if not jsons else json.loads(jsons[0])
@@ -131,22 +122,22 @@ class PageParser:
         return self.html
 
     def get_next_page(self) -> Dict[str, Union[str, bool]]:
-        assert self.json_data is not None
+        assert self.json_data is not None, 'json_data is null'
         is_end = self.json_data.get('paging', {}).get('is_end', '')
         return {'next_url': self.json_data.get('paging', {}).get('next'), 'is_end': is_end}
 
     def get_pages(self) -> Page:
-        assert self.json_data is not None
+        assert self.json_data is not None, 'json_data is null'
         data_list = self.json_data.get('data', [])
         if not data_list:
             data_list = [self.json_data]
-        assert data_list is not None
+        assert data_list is not None, 'data_list is null'
         return data_list
 
 
 class HotListPageParser(PageParser):
     def get_pages(self) -> Page:
-        assert self.json_data is not None
+        assert self.json_data is not None, 'json_data is null'
         data_list = self.json_data.get('data', [])
         answers = []
         for data in data_list:
@@ -164,7 +155,7 @@ class HotQuestionPageParser(PageParser):
     """
 
     def get_pages(self) -> Page:
-        assert self.json_data is not None
+        assert self.json_data is not None, 'json_data is null'
         data_list = self.json_data.get('data', [])
         questions = []
         for data in data_list:

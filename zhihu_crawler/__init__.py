@@ -5,8 +5,31 @@ from .constants import *
 _scraper = ZhiHuScraper()
 
 
-def set_cookies(cookies):
-    pass
+def set_cookie(cookie: Dict[str, str] = {}):
+    """
+    :param cookie: cookie 字典；格式为{'d_c0': '.....'}；
+    """
+    assert 'd_c0' in cookie.keys(), 'd_c0 为必要参数!'
+    cookies = []
+    for key in cookie.keys():
+        value = cookie[key]
+        cookie_str = f'{key}="{value}"' if key == 'd_c0' else f'{key}={value}'
+        cookies.append(cookie_str)
+    _scraper.default_headers['cookie'] = ';'.join(cookies)
+
+
+def set_proxy(proxy: Optional[Dict[str, str]] = None):
+    """
+    设置代理；每次请求都切换一次代理才算最佳
+    """
+    _scraper.set_proxy(proxy)
+
+
+def _set_timeout(timeout: int):
+    assert isinstance(timeout, int), 'timeout值应为大于0的整数'
+    if timeout < 5 or timeout < 0:
+        timeout = DEFAULT_REQUESTS_TIMEOUT
+    _scraper.set_timeout(timeout=timeout)
 
 
 def search_crawler(key_word: Optional[str] = None,
@@ -28,14 +51,13 @@ def search_crawler(key_word: Optional[str] = None,
     @ drill_down_count: (int) 下钻内容采集数量(问题下的回答)，，默认-1 不采集 0采集全部 >0采集指定的数量
     :return:
     """
-    _scraper.requests_kwargs['timeout'] = kwargs.pop('timeout', DEFAULT_REQUESTS_TIMEOUT)
+    _set_timeout(kwargs.pop('timeout', DEFAULT_REQUESTS_TIMEOUT))
     options: Union[Dict[str, Any], Set[str]] = kwargs.setdefault('options', {})
     if isinstance(options, set):
         options = {k: True for k in options}
     options.setdefault('key_word', key_word)
     options['drill_down_count'] = kwargs.pop('drill_down_count', -1)
-    if comment_count:
-        options['comment_count'] = comment_count
+    options['comment_count'] = comment_count
     data_types = kwargs.get('data_type', [ANSWER, ARTICLE, VIDEO])
     kwargs['data_type'] = options['data_type'] = data_types
     kwargs['sort'] = options['sort'] = kwargs.get('sort', None)
@@ -60,6 +82,7 @@ def top_search_crawl(top_search_url: Optional[str] = TOP_SEARCH_URL,
     page_limit (int): 需要采集的页数, 默认为constants下的 DEFAULT_PAGE_LIMIT
     :return:
     """
+    _set_timeout(kwargs.pop('timeout', DEFAULT_REQUESTS_TIMEOUT))
     return _scraper.top_search_crawler(top_search_url=top_search_url, **kwargs)
 
 
@@ -81,6 +104,7 @@ def hot_questions_crawler(period: Union[str] = 'hour',
     @ drill_down_count: (int) 下钻内容(answer)采集数量，热榜下钻内容数据量大，默认-1 不采集 0采集全部 >0采集指定的数量
     @ comment_count: (int) 采集指定数量的评论。该值过大可能会导致多次请求;默认-1 不采集 0采集全部 >0采集指定的数量
     """
+    _set_timeout(kwargs.pop('timeout', DEFAULT_REQUESTS_TIMEOUT))
     if isinstance(domains, int or str):
         domains = [domains]
     options: Union[Dict[str, Any], Set[str]] = kwargs.setdefault('options', {})
@@ -99,6 +123,7 @@ def hot_list_crawler(drill_down_count: Union[int] = -1, **kwargs) -> Iterator[Qu
     :param drill_down_count: (int) 下钻内容采集数量，热榜下钻内容数据量大，默认-1 不采集 0采集全部 >0采集指定的数量
     @ comment_count: (int) 采集指定数量的评论。该值过大可能会导致多次请求;默认-1 不采集 0采集全部 >0采集指定的数量
     """
+    _set_timeout(kwargs.pop('timeout', DEFAULT_REQUESTS_TIMEOUT))
     options: Union[Dict[str, Any], Set[str]] = kwargs.setdefault('options', {})
     options['comment_count'] = kwargs.pop('comment_count', -1)
     options['drill_down_count'] = drill_down_count
@@ -126,6 +151,7 @@ def common_crawler(task_id: Union[str],
     pubdate_sort: (bool) 是否通过时间排序. 默认True通过最新发布时间降序形式进行采集
     :return:
     """
+    _set_timeout(kwargs.pop('timeout', DEFAULT_REQUESTS_TIMEOUT))
     options: Union[Dict[str, Any], Set[str]] = kwargs.setdefault('options', {})
     if isinstance(options, set):
         options = {k: True for k in options}
@@ -144,8 +170,7 @@ def common_crawler(task_id: Union[str],
         return _scraper.article_crawler(article_id=task_id, **kwargs)
     elif data_type == VIDEO:
         return _scraper.video_crawler(video_id=task_id, **kwargs)
-    if data_type not in (ARTICLE, VIDEO, QUESTION):
-        raise ValueError('匹配不到可以采集的数据类型，请校对data_type的值')
+    assert data_type not in (ARTICLE, VIDEO, QUESTION), '匹配不到可以采集的数据类型，请校对data_type的值'
 
 
 def user_crawler(user_id: Union[str],
@@ -177,6 +202,7 @@ def user_crawler(user_id: Union[str],
     @ drill_down_count: 是否向下钻取内容（如提问的回答、专栏下的文章、收藏话题下的内容等）；参数值规则如上
     @ comment_count: 需要采集的回答、视频、文章、想法的评论数；参数值规则如上
     """
+    _set_timeout(kwargs.pop('timeout', DEFAULT_REQUESTS_TIMEOUT))
     options: Union[Dict[str, Any], Set[str]] = kwargs.setdefault('options', {})
     if isinstance(options, set):
         options = {k: True for k in options}

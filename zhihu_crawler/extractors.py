@@ -8,7 +8,7 @@ from loguru import logger
 import re
 import copy
 import json
-from zhihu_utils.zhihu_utils import urljoin, extract_time, generating_page_links
+from utils import urljoin, extract_time, generating_page_links
 
 
 def extract_data(raw_html, options: Options, request_fn: RequestFunction, full_html=None) -> Union[QuestionType,
@@ -427,6 +427,8 @@ class BaseExtractor:
                 response_json = json.loads(response.text) or {}
                 comment_infos = response_json.get('data', [])
                 for comment_info in comment_infos:
+                    if comment_count <= len(comments):
+                        return {'comments': comments}
                     comment_content = comment_info.get('content', '')
                     if '<' in comment_content and '>' in comment_content:
                         comment_content = HTML(html=comment_content)
@@ -442,8 +444,7 @@ class BaseExtractor:
                     info['reply_to_author'] = reply_to_author.get('author_info', {})
                     info.update(self.extract_author(comment_info.get('author', {}).get('member', {})))
                     comments.append(info)
-                    if comment_count <= len(comments):
-                        break
+
                 if response_json.get('paging', {}).get('is_end', False):
                     break
         return {'comments': comments}
@@ -468,6 +469,10 @@ class BaseExtractor:
                 response_json = json.loads(response.text) if response else {}
                 infos = response_json.get('data', [])
                 for info in infos:
+                    if total_count <= len(data_list):
+                        return {
+                            type_name: data_list
+                        }
                     extractor = None
                     if type_name in ('questions', 'following_questions'):
                         extractor = UserQuestionExtractor(info, self.options, self.request_fn, full_html=None)
@@ -482,10 +487,6 @@ class BaseExtractor:
                     else:
                         extractor = BaseExtractor(info, self.options, self.request_fn, full_html=None)
                     result = extractor.extract_data()
-                    if total_count <= len(data_list):
-                        return {
-                            type_name: data_list
-                        }
                     data_list.append(result)
                 is_end = response_json.get('paging', {}).get('is_end', False)
                 if not infos or is_end:
@@ -564,7 +565,7 @@ class UserExtractor(BaseExtractor):
             total_count = count if 0 < count < total_count else total_count
             start_url = USER_ARTICLE_URL.format(user_id=user_id)
             if sort == 'included':
-                start_url = start_url.replace('/articles?', '/included-articles?').\
+                start_url = start_url.replace('/articles?', '/included-articles?'). \
                     replace('sort_by=created', 'sort_by=included')
             else:
                 start_url = re.sub('sort_by=created', f'sort_by={sort}', start_url)

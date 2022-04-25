@@ -2,11 +2,12 @@ from requests_html import HTMLSession, AsyncHTMLSession
 from functools import partial
 from .page_iterators import *
 from .extractors import extract_data, extract_user, extract_question_data
-from zhihu_utils.zhihu_utils import get_useragent
+from utils.zhihu_utils import get_useragent
 import itertools
 from loguru import logger
 import asyncio
 import json
+import time
 
 
 class ZhiHuScraper:
@@ -15,8 +16,7 @@ class ZhiHuScraper:
     """
     default_headers = {
         # 'connection': 'close',
-        "user-agent": get_useragent(),
-        'cookie': 'd_c0="AIBfvRMxmhSPTk1AffR--QLwm-gDM5V5scE=|1646725014"'
+        "user-agent": get_useragent()
     }
 
     def __init__(self, session=None, async_session=None, requests_kwargs=None):
@@ -30,24 +30,24 @@ class ZhiHuScraper:
             async_session.headers.update(self.default_headers)
         self.async_session = async_session
         self.session = session
-        for key in ['Connection', 'Accept', 'Accept-Encoding']:
-            self.async_session.headers.pop(key)
-            self.session.headers.pop(key)
         self.requests_kwargs = requests_kwargs
 
-    def set_proxy(self, proxy: Optional[str] = None):
+    def set_proxy(self, proxy: Optional[Dict[str, str]] = None):
         """
         设置代理
-        :param proxy: 字符串形式的代理
+        :param proxy: proxy = {'http': 'http://ip:port', 'https': 'http://ip:port'}
         :return:
         """
         proxies = {
-            'proxies': {
-                'http': proxy,
-                'https': proxy
-            }
+            'proxies': proxy
         }
         self.requests_kwargs.update(proxies)
+
+    def set_timeout(self, timeout: int):
+        """
+        设置请求超时 单位秒
+        """
+        self.requests_kwargs['timeout'] = timeout
 
     def search_crawler(self, key_word: Union[str], **kwargs) -> Union[Iterator[ArticleType],
                                                                       Iterator[AnswerType],
@@ -132,24 +132,21 @@ class ZhiHuScraper:
 
     def get(self, url, **kwargs):
         """
-        请求方法，在该方法中获取代理及x_zse_96参数加密
+        请求方法，在该方法中进行x_zse_96参数加密
         @ x_zse_96: 是否需要x_zse_96参数加密
         """
-        assert url is not None
+        assert url is not None, 'url is null'
         x_zse_96 = kwargs.pop('x_zse_96', False)
-        cookie = kwargs.pop('cookie', {})
-        # 获取代理信息
-        # proxies = {'http': get_proxy(), 'https': get_proxy()}
-        proxies = {'http': 'http://127.0.0.1:8125', 'https': 'http://127.0.0.1:8125'}
+        d_c0 = re.sub('d_c0=|;.*', '', self.default_headers.get('cookie', ''))
         if isinstance(url, str):
-            if x_zse_96 or cookie:
-                self.session.headers.update(get_headers(url) or {})
-                self.session.headers.update(cookie)
+            if x_zse_96:
+                self.default_headers.update(get_headers(url, d_c0) or {})
+            self.session.headers.update(self.default_headers)
             retry_limit = 6
             response = None
             for retry in range(1, retry_limit + 1):
                 try:
-                    response = self.session.get(url, proxies=proxies, **self.requests_kwargs)
+                    response = self.session.get(url, **self.requests_kwargs)
                     response.raise_for_status()
                     return response
                 except Exception as e:
@@ -159,14 +156,14 @@ class ZhiHuScraper:
                         time.sleep(sleep_time)
                         # 重新获取代理
                         # proxies = {'http': get_proxy(), 'https': get_proxy()}
-            assert response is not None
+            assert response is not None, f'重新请求{retry_limit}次， response为空'
         if isinstance(url, list):  # 使用协程请求
-            return self.generic_response(url, x_zse_96=x_zse_96, proxies=proxies)
+            return self.generic_response(url, x_zse_96=x_zse_96)
 
-    def generic_response(self, urls, x_zse_96, proxies):
+    def generic_response(self, urls, x_zse_96):
         urls = [urls[i: i + ASYNC_COUNT] for i in range(0, len(urls), ASYNC_COUNT)]
         for sub_urls in urls:
-            tasks = [lambda url=url: self.async_get(url, x_zse_96=x_zse_96, proxies=proxies) for url in sub_urls]
+            tasks = [lambda url=url: self.async_get(url, x_zse_96=x_zse_96) for url in sub_urls]
             results = self.async_session.run(*tasks)
             yield results
 
@@ -174,7 +171,7 @@ class ZhiHuScraper:
         if kwargs.get('x_zse_96'):
             self.async_session.headers.update(get_headers(url))
         proxies = kwargs.get('proxies', {})
-        response = await self.async_session.get(url, proxies=proxies, timeout=5)
+        response = await self.async_session.get(url, **self.requests_kwargs)
         if response and response.status_code != 200:
             logger.error(f'request url: {url}, response code: {response.status_code}')
         await asyncio.sleep(2)

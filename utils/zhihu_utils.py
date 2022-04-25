@@ -6,7 +6,7 @@ import re
 from zhihu_crawler.constants import X_ZSE_93
 from zhihu_crawler.zhihu_types import *
 from math import ceil
-from urllib.parse import unquote, urljoin, quote
+
 from my_fake_useragent import UserAgent
 
 
@@ -18,10 +18,18 @@ def get_proxy():
     return proxy_meta
 
 
-def get_headers(url):
-    sign, cookies = encrypt(X_ZSE_93, ''.join(re.sub(r'.*zhihu\.com', '', url)))
+def get_useragent():
+    """
+    随机获取useragent
+    Returns: useragent
+    """
+    return UserAgent(phone=False, family='chrome', os_family='windows').random()
+
+
+def get_headers(url: str, d_c0: str):
+    sign = encrypt(X_ZSE_93, re.sub(r'.*zhihu\.com', '', url), d_c0)
     headers = {
-        'cookie': f'd_c0={cookies}',
+        'cookie': f'd_c0={d_c0}',
         'user-agent': get_useragent(),
         'x-zse-93': X_ZSE_93,
         'x-zse-96': sign
@@ -45,7 +53,7 @@ def extract_time(json_data: Dict) -> Dict[str, Union[str, int]]:
     }
 
 
-def generating_page_links(base_url, total_num=50, limit=20):
+def generating_page_links(base_url, total_num, limit):
     """
     根据总数及每页显示的个数生成下一页的urls
     @param base_url: 基础的url
@@ -53,14 +61,6 @@ def generating_page_links(base_url, total_num=50, limit=20):
     @param limit: 每页展示的个数 默认20
     """
     page_urls = []
-    for i in range(ceil(total_num/limit)):
-        page_urls.append(re.sub(rf'offset=\d+&limit=\d+', f'offset={i*limit}&limit={limit}', base_url))
+    for i in range(ceil(total_num / limit)):
+        page_urls.append(re.sub(rf'offset=\d+&limit=\d+', f'offset={i * limit}&limit={limit}', base_url))
     return page_urls
-
-
-def get_useragent():
-    """
-    随机获取useragent
-    Returns: useragent
-    """
-    return UserAgent(phone=False, family='chrome', os_family='windows').random()

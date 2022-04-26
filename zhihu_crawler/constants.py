@@ -1,14 +1,20 @@
 # 知乎基础url
 BASE_URL = 'https://www.zhihu.com/'
+
 # 知乎基础api
 BASE_API = 'https://api.zhihu.com/'
+
 # 知乎搜索综合url
 SEARCH_URL = 'https://api.zhihu.com/search?t=general&q={key_word}&correction=1&offset=0&limit=20&filter_fields=&' \
              'lc_idx=0&show_all_topics=0&search_source=Filter&vertical={data_type}'
+
 # 视频请求url
 VIDEO_BASE_URL = 'https://lens.zhihu.com/api/v4/videos/'
+
 # 文章url
 ARTICLE_BASE_URL = 'https://zhuanlan.zhihu.com/p/'
+
+
 # 单个问题回答的接口，发布时间排序
 QUESTION_ANSWERS_URL = 'https://api.zhihu.com/questions/{question_id}/answers?include=data%5B%2A%5D.is_normal%2' \
                       'Cadmin_closed_comment%2Creward_info%2Cis_collapsed%2Cannotation_action%2Cannotation_detail%2' \
@@ -20,6 +26,7 @@ QUESTION_ANSWERS_URL = 'https://api.zhihu.com/questions/{question_id}/answers?in
                       'Bdata%5B%2A%5D.mark_infos%5B%2A%5D.url%3Bdata%5B%2A%5D.author.follower_count%2Cvip_info%2' \
                       'Cbadge%5B%2A%5D.topics%3Bdata%5B%2A%5D.settings.table_of_content.enabled&' \
                       'offset=0&limit=20&platform=desktop&sort_by=updated'
+
 # 用户回答的接口 时间排序
 USER_ANSWERS_URL = 'https://api.zhihu.com/members/{user_id}/answers?include=data%5B*%5D.is_normal%2' \
                    'Cadmin_closed_comment%2Creward_info%2Cis_collapsed%2Cannotation_action%2Cannotation_detail%2' \
@@ -72,17 +79,27 @@ USER_FOLLOWING_QUESTIONS_URL = 'https://www.zhihu.com/api/v4/members/{user_id}/f
 
 # 单条回复url
 ANSWER_BASE_URL = 'https://www.zhihu.com/question/{question_id}/answer/{answer_id}'
+
 # 热搜
 TOP_SEARCH_URL = 'https://www.zhihu.com/api/v4/search/top_search'
+
 # 话题
 TOPIC_BASE_URL = 'https://www.zhihu.com/topic/'
+
 # 评论url
-COMMENT_URL = 'https://api.zhihu.com/{data_type}/{id}/comments?order=reverse&offset=0&limit=20&status=open'
+COMMENT_URL = 'https://api.zhihu.com/{data_type}/{id}/root_comments?order=normal&offset=0&limit=20&status=open'
+
+# 子评论
+CHILD_COMMENT_URL = 'https://api.zhihu.com/comments/{comment_id}/child_comments?offset=0&limit=20'
+
 # 话题下内容列表接口
 TOPIC_FEEDS_URL = 'https://api.zhihu.com/topics/{topic_id}/feeds/timeline_activity?offset=0&limit=20'
 
 # x-zse-93
 X_ZSE_93 = '101_3_2.0'
+
+# 是否需要x_zse_96 加密
+X_ZSE_96 = True
 
 # 类型
 ANSWER = 'answer'  # 问答

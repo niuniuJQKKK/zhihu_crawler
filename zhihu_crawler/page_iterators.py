@@ -52,6 +52,14 @@ def iter_video_pages(video_id: str, request_fn: RequestFunction, **kwargs) -> It
     return generic_iter_pages(start_url, VideoPageParser, request_fn, **kwargs)
 
 
+def iter_answer_pages(answer_id: str, request_fn: RequestFunction, **kwargs) -> Iterator[Page]:
+    start_url = kwargs.pop('start_url', None)
+    if not start_url:
+        start_url = urljoin('https://www.zhihu.com/answer/', answer_id)
+        kwargs['x_zse_96'] = X_ZSE_96
+    return generic_iter_pages(start_url, AnswerPageParser, request_fn, **kwargs)
+
+
 def iter_user_pages(user_id: str, request_fn: RequestFunction, **kwargs) -> Iterator[Page]:
     start_url = kwargs.pop('start_url', None)
     if not start_url:
@@ -165,6 +173,17 @@ class HotQuestionPageParser(PageParser):
             questions.append(question_info)
         del data_list
         return questions
+
+
+class AnswerPageParser(PageParser):
+    """
+    回答页面
+    """
+    def get_pages(self) -> Page:
+        assert self.json_data is not None, 'json_data is null'
+        answers = self.json_data.get('initialState', {}).get('entities', {}).get('answers', {})
+        answers = [answers[key] for key in answers.keys() if key and key.isdigit()]
+        return answers
 
 
 class QuestionPageParser(PageParser):

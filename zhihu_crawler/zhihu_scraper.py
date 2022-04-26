@@ -97,6 +97,14 @@ class ZhiHuScraper:
         iter_video_pages_fn = partial(iter_video_pages, video_id=video_id, request_fn=self.send, **kwargs)
         return self._generic_crawler(extract_data, iter_video_pages_fn, **kwargs)
 
+    def answer_crawler(self, answer_id: Union[str], **kwargs) -> Iterator[AnswerType]:
+        """
+        通过回答id进行采集
+        """
+        kwargs['scraper'] = self
+        iter_answer_pages_fn = partial(iter_answer_pages, answer_id=answer_id, request_fn=self.send, **kwargs)
+        return self._generic_crawler(extract_data, iter_answer_pages_fn, **kwargs)
+
     def user_crawler(self, user_id: Union[str], **kwargs) -> Iterator[UserType]:
         """
         通过账号id采集个人主页数据
@@ -198,7 +206,7 @@ class ZhiHuScraper:
             options = {}
         elif isinstance(options, set):
             options = {k: True for k in options}
-        total_count = kwargs.get('total_count', 0)
+        total_count = kwargs.pop('total_count', 0)
         count = 0
         for i, page in zip(counter, iter_pages_fn()):
             for element in page:

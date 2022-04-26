@@ -3,28 +3,18 @@ monkey.patch_all()
 from zhihu_crawler import *
 
 if __name__ == '__main__':
-    # set_proxy({'http': 'http://127.0.0.1:8125', 'https': 'http://127.0.0.1:8125'})
-    set_cookie({'d_c0': 'AIBfvRMxmhSPTk1AffR--QLwm-gDM5V5scE=|1646725014'})
+    set_proxy({'http': 'http://127.0.0.1:8125', 'https': 'http://127.0.0.1:8125'})
+    # set_cookie({'d_c0': 'AIBfvRMxmhSPTk1AffR--QLwm-gDM5V5scE=|1646725014'})
     # for info in search_crawler(key_word='滴普', count=30):
     #     print(info)
     #     pass
 
-    # for info in common_crawler(task_id='20589123', data_type='question', drill_down_count=3, comment_count=3):
-    #     print(info)
+    # for info in common_crawler(task_id='528030527', data_type='question', comment_count=3):
+    #     # print(info)
     #     pass
 
     for info in user_crawler('wo-men-de-tai-kong',
-                             # answer_count=2,
-                             # zvideo_count=3,
-                             # question_count=2,
-                             # article_count=3,
-                             column_count=5,
-                             # pin_count=3,
-                             # following=3,
-                             # followers=3,
-                             # following_columns=3,
-                             # following_questions=3,
-                             # following_topics=3,
+                             answer_count=50,
                              comment_count=3,
                              drill_down_count=3,
                              ):
@@ -37,4 +27,4 @@ if __name__ == '__main__':
     # for info in hot_list_crawler(drill_down_count=3):
     #     print(info)
 
-    print(top_search_crawl())
+    # print(top_search_crawl())

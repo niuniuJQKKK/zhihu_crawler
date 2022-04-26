@@ -170,7 +170,9 @@ def common_crawler(task_id: Union[str],
         return _scraper.article_crawler(article_id=task_id, **kwargs)
     elif data_type == VIDEO:
         return _scraper.video_crawler(video_id=task_id, **kwargs)
-    assert data_type not in (ARTICLE, VIDEO, QUESTION), '匹配不到可以采集的数据类型，请校对data_type的值'
+    elif data_type == ANSWER:
+        return _scraper.answer_crawler(answer_id=task_id, **kwargs)
+    assert data_type in (ARTICLE, VIDEO, QUESTION), '匹配不到可以采集的数据类型，请校对data_type的值'
 
 
 def user_crawler(user_id: Union[str],

@@ -124,7 +124,7 @@ class BaseExtractor:
                 partial_info = method()
                 if partial_info is None:
                     continue
-                # logger.warning(f'method: {method.__name__} return: {partial_info}')
+                # logger.info(f'method: {method.__name__} return: {partial_info}')
                 self.info.update(partial_info)
             except Exception as ex:
                 logger.debug(f'method: {method.__name__} error:{ex}')
@@ -145,11 +145,13 @@ class BaseExtractor:
         if self._type == QUESTION and answer_count > -1 and total_count > 0:
             total_count = answer_count if 0 < answer_count < total_count else total_count
             url = QUESTION_ANSWERS_URL.format(question_id=question_id)
-            self.extract_meta_data(url, type_name='answers', total_count=total_count)
-
+            print(url)
+            for result in self.extract_meta_data(url, 'answers', total_count=total_count):
+                self.info.update(result)
+        else:
+            # 采集评论:
+            self.info.update(self.extract_comments())
         self.info['type'] = self.type
-        # 采集评论:
-        self.info.update(self.extract_comments())
         del temp_info
         return self.info
 
@@ -419,37 +421,66 @@ class BaseExtractor:
         if comment_url is None:
             comment_url = COMMENT_URL.format(data_type=f'{data_type}s', id=self.info.get(f'{self.type}_id'))
         page_urls = generating_page_links(comment_url, total_num=comment_count)
-        logger.info(f'start request links: {page_urls}')
+        logger.info(f'准备请求根评论URL集合: {page_urls}')
         for responses in self.request_fn(page_urls):
             for response in responses:
                 if response is None or (response and response.status_code != 200):
                     continue
-                response_json = json.loads(response.text) or {}
-                comment_infos = response_json.get('data', [])
-                for comment_info in comment_infos:
+                # 根评论
+                for comment in self._extract_comment(response):
                     if comment_count <= len(comments):
                         return {'comments': comments}
-                    comment_content = comment_info.get('content', '')
-                    if '<' in comment_content and '>' in comment_content:
-                        comment_content = HTML(html=comment_content)
-                        comment_content = ''.join([ele.text for ele in comment_content.find('p,a') if ele and ele.text])
-                    info = {
-                        'comment_id': comment_info.get('id', ''),
-                        'comment_content': comment_content,
-                        'comment_pub_time': comment_info.get('created_time', 0),
-                        'comment_vote_count': comment_info.get('vote_count', 0),
-                        'author_info': {},
-                    }
-                    reply_to_author = self.extract_author(comment_info.get('reply_to_author', {}).get('member', {}))
-                    info['reply_to_author'] = reply_to_author.get('author_info', {})
-                    info.update(self.extract_author(comment_info.get('author', {}).get('member', {})))
-                    comments.append(info)
-
-                if response_json.get('paging', {}).get('is_end', False):
-                    break
+                    child_comment_count = comment.get('child_comment_count', 0)
+                    comment_id = comment.get('comment_id')
+                    # 子评论
+                    if child_comment_count > 0:
+                        child_comment_urls = generating_page_links(CHILD_COMMENT_URL.format(comment_id=comment_id),
+                                                                   total_num=child_comment_count)
+                        logger.info(f'准备请求子评论URL集合: {child_comment_urls}')
+                        for child_comment_responses in self.request_fn(child_comment_urls):
+                            child_comments = []
+                            for child_comment_response in child_comment_responses:
+                                for child_comment in self._extract_comment(child_comment_response):
+                                    child_comment['root_comment_id'] = comment_id
+                                    child_comments.append(child_comment)
+                            comment['child_comments'] = child_comments
+                    comments.append(comment)
         return {'comments': comments}
 
+    def _extract_comment(self, comment_response) -> CommentType:
+        response_json = json.loads(comment_response.text) or {}
+        comment_infos = response_json.get('data', [])
+        for comment_info in comment_infos:
+            comment_content = comment_info.get('content', '')
+            if '<' in comment_content and '>' in comment_content:
+                comment_content = HTML(html=comment_content)
+                comment_content = ''.join([ele.text for ele in comment_content.find('p,a') if ele and ele.text])
+            info = {
+                'comment_id': comment_info.get('id', ''),
+                'comment_content': comment_content,
+                'comment_pub_time': comment_info.get('created_time', 0),
+                'comment_vote_count': comment_info.get('vote_count', 0),
+                'child_comment_count': comment_info.get('child_comment_count', 0),
+                'author_info': {},
+            }
+            reply_to_author = comment_info.get('reply_to_author', {}) or {}
+            reply_to_author = self.extract_author(reply_to_author.get('member', {}))
+            info['reply_to_author'] = reply_to_author.get('author_info', {})
+            info.update(self.extract_author(comment_info.get('author', {}).get('member', {})))
+            yield info
+
     def extract_meta_data(self, start_url, type_name, **kwargs) -> PartialType:
+        results = []
+        total_count = kwargs.get('total_count', 0)
+        if not total_count:
+            return {type_name: results}
+        for info in self._extract_meta_data(start_url, type_name, **kwargs):
+            if 0 < total_count <= len(results):
+                break
+            results.append(info)
+        return {type_name: results}
+
+    def _extract_meta_data(self, start_url, type_name, **kwargs) -> PartialType:
         """
         获取账号的回答、文章、视频、专栏、提问等数据
         :param start_url: 请求数据的接口
@@ -458,10 +489,8 @@ class BaseExtractor:
         :return: 返回对应数据集合
         """
         total_count = kwargs.pop('total_count', 0)
-        if total_count == 0:
-            return
         page_urls = generating_page_links(start_url, total_count)
-        data_list = []
+        logger.info(f'准备请求URL集合: {page_urls}')
         for responses in self.request_fn(page_urls, **kwargs):
             for response in responses:
                 if response is None or (response and response.status_code != 200):
@@ -469,10 +498,6 @@ class BaseExtractor:
                 response_json = json.loads(response.text) if response else {}
                 infos = response_json.get('data', [])
                 for info in infos:
-                    if total_count <= len(data_list):
-                        return {
-                            type_name: data_list
-                        }
                     extractor = None
                     if type_name in ('questions', 'following_questions'):
                         extractor = UserQuestionExtractor(info, self.options, self.request_fn, full_html=None)
@@ -487,11 +512,7 @@ class BaseExtractor:
                     else:
                         extractor = BaseExtractor(info, self.options, self.request_fn, full_html=None)
                     result = extractor.extract_data()
-                    data_list.append(result)
-                is_end = response_json.get('paging', {}).get('is_end', False)
-                if not infos or is_end:
-                    break
-        return {type_name: data_list}
+                    yield result
 
 
 class QuestionExtractor(BaseExtractor):
@@ -525,7 +546,7 @@ class UserExtractor(BaseExtractor):
                 partial_info = method()
                 if partial_info is None:
                     continue
-                logger.warning(f'method: {method.__name__} return: {partial_info}')
+                logger.info(f'method: {method.__name__} return: {partial_info}')
                 self.info.update(partial_info)
             except Exception as ex:
                 logger.debug(f'method: {method.__name__} error:{ex}')
@@ -571,7 +592,7 @@ class UserExtractor(BaseExtractor):
                 start_url = re.sub('sort_by=created', f'sort_by={sort}', start_url)
             result = self.extract_meta_data(start_url=start_url,
                                             type_name='articles',
-                                            x_zse_96=True,
+                                            x_zse_96=X_ZSE_96,
                                             total_count=total_count) or {}
             self.info.update(result)
 
@@ -594,7 +615,7 @@ class UserExtractor(BaseExtractor):
             start_url = USER_PINS_URL.format(user_id=user_id)
             result = self.extract_meta_data(start_url=start_url,
                                             type_name='pins',
-                                            x_zse_96=True,
+                                            x_zse_96=X_ZSE_96,
                                             total_count=total_count) or {}
             self.info.update(result)
 
@@ -618,7 +639,7 @@ class UserExtractor(BaseExtractor):
             result = self.extract_meta_data(start_url=start_url,
                                             type_name='following',
                                             total_count=total_count,
-                                            x_zse_96=True) or {}
+                                            x_zse_96=X_ZSE_96) or {}
             self.info.update(result)
 
         # ********* 关注该用户的人列表采集 ********* #
@@ -630,7 +651,7 @@ class UserExtractor(BaseExtractor):
             result = self.extract_meta_data(start_url=start_url,
                                             type_name='followers',
                                             total_count=total_count,
-                                            x_zse_96=True) or {}
+                                            x_zse_96=X_ZSE_96) or {}
             self.info.update(result)
 
         # ********* 用户关注的专栏列表采集 ********* #
@@ -654,7 +675,7 @@ class UserExtractor(BaseExtractor):
             result = self.extract_meta_data(start_url=start_url,
                                             type_name='following_questions',
                                             total_count=total_count,
-                                            x_zse_96=True) or {}
+                                            x_zse_96=X_ZSE_96) or {}
             self.info.update(result)
 
         # ********* 用户关注的话题列表采集 ********* #
@@ -666,7 +687,7 @@ class UserExtractor(BaseExtractor):
             result = self.extract_meta_data(start_url=start_url,
                                             type_name='following_topics',
                                             total_count=total_count,
-                                            x_zse_96=True) or {}
+                                            x_zse_96=X_ZSE_96) or {}
             self.info.update(result)
 
         return self.info
@@ -751,7 +772,7 @@ class UserPinExtractor(UserExtractor):
                 partial_info = method()
                 if partial_info is None:
                     continue
-                logger.warning(f'method: {method.__name__} return: {partial_info}')
+                logger.info(f'method: {method.__name__} return: {partial_info}')
                 self.info.update(partial_info)
             except Exception as ex:
                 logger.debug(f'method: {method.__name__} error:{ex}')

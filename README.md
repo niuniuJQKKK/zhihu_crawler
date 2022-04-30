@@ -17,13 +17,14 @@ __注意事项__ 项目内有部分异步操作，在模块引用之前需要使
 
 __安装__:
 ```
+pip install zhihu_crawler
 ```
 __使用案例__:
 ```
 # 猴子补丁
 from gevent import monkey
 monkey.patch_all()
-from zhihu_crawler import *
+from zhihu_crawler.zhihu_crawler import *
 
     if __name__ == '__main__':
         # 设置代理; 如采集量较大，建议每次请求都切换代理

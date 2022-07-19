@@ -62,8 +62,14 @@ USER_COLUMN_URL = 'https://api.zhihu.com/members/{user_id}/column-contributions?
 # 专栏文章列表接口
 COLUMN_ITEMS_URL = 'https://api.zhihu.com/columns/{column_id}/items?offset=0&limit=20'
 
+# 用户收藏夹列表接口
+USER_COLLECTIONS_URL = ''
+
+# 用户关注的收藏夹列表接口
+USER_FOLLOWING_COLLECTIONS = ''
+
 # 用户所关注的人列表接口
-USER_FOLLOWEE_URL = 'https://www.zhihu.com/api/v4/members/{user_id}/followees?include=data%5B*%5D.answer_count%2Carticles_count%2Cgender%2Cfollower_count%2Cis_followed%2Cis_following%2Cbadge%5B%3F%28type%3Dbest_answerer%29%5D.topics&offset=0&limit=20'
+USER_FOLLOWING_URL = 'https://www.zhihu.com/api/v4/members/{user_id}/followees?include=data%5B*%5D.answer_count%2Carticles_count%2Cgender%2Cfollower_count%2Cis_followed%2Cis_following%2Cbadge%5B%3F%28type%3Dbest_answerer%29%5D.topics&offset=0&limit=20'
 
 # 关注该账号的人列表的接口
 USER_FOLLOWERS_URL = 'https://www.zhihu.com/api/v4/members/{user_id}/followers?include=data%5B*%5D.answer_count%2Carticles_count%2Cgender%2Cfollower_count%2Cis_followed%2Cis_following%2Cbadge%5B%3F%28type%3Dbest_answerer%29%5D.topics&offset=0&limit=20'
@@ -95,6 +101,9 @@ CHILD_COMMENT_URL = 'https://api.zhihu.com/comments/{comment_id}/child_comments?
 # 话题下内容列表接口
 TOPIC_FEEDS_URL = 'https://api.zhihu.com/topics/{topic_id}/feeds/timeline_activity?offset=0&limit=20'
 
+# 赞同人列表接口
+VOTERS_URL = 'https://api.zhihu.com/{data_type}/{id}/voters?include=data%5B*%5D.answer_count%2Carticles_count%' \
+             '2Cfollower_count%2Cgender%2Cis_followed%2Cis_following%2Cbadge&offset=0&limit=20'
 # x-zse-93
 X_ZSE_93 = '101_3_2.0'
 

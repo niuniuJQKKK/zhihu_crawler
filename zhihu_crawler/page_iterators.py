@@ -25,6 +25,10 @@ def iter_search_pages(key_word: str, request_fn: RequestFunction, **kwargs) -> I
             start_url = start_url + f'&sort={sort}'
         if time_interval:
             start_url = start_url + f'&time_interval={time_interval}'
+    kwargs['z_c0'] = '2|1:0|10:1647511173|4:z_c0|92:Mi4xMWtwS053QUFBQUFDOEJBTWMzaWJGQ1lBQUFCZ0FsVk5oVlFnWXd' \
+                     'CMEUyQW5RZ0dGb1hZT1NDRXRybF81QUtmU3hR|d37c9324eb2e6a989a4bb9e3fb145d33ead3c233653e8c0e' \
+                     'a9eda77883c098eb'
+    print()
     return generic_iter_pages(start_url, PageParser, request_fn, **kwargs)
 
 
@@ -32,7 +36,7 @@ def iter_question_pages(question_id: str, request_fn: RequestFunction, **kwargs)
     start_url = kwargs.pop('start_url', None)
     pubdate_sort = kwargs.pop('pubdate_sort', False)
     if not start_url:
-        start_url = QUESTION_ANSWERS_URL.format(question_id=question_id)
+        start_url = urljoin('https://www.zhihu.com/question/', question_id)
         if not pubdate_sort:
             start_url = start_url.replace('&sort_by=updated', '&sort_by=default')
     return generic_iter_pages(start_url, QuestionPageParser, request_fn, **kwargs)
@@ -56,7 +60,7 @@ def iter_answer_pages(answer_id: str, request_fn: RequestFunction, **kwargs) -> 
     start_url = kwargs.pop('start_url', None)
     if not start_url:
         start_url = urljoin('https://www.zhihu.com/answer/', answer_id)
-        kwargs['x_zse_96'] = X_ZSE_96
+        # kwargs['x_zse_96'] = X_ZSE_96
     return generic_iter_pages(start_url, AnswerPageParser, request_fn, **kwargs)
 
 
@@ -190,7 +194,11 @@ class QuestionPageParser(PageParser):
     """
     问题json数据清洗
     """
-    pass
+    def get_pages(self) -> Page:
+        assert self.json_data is not None, 'json_data is null'
+        questions = self.json_data.get('initialState', {}).get('entities', {}).get('questions', {})
+        questions = [questions[key] for key in questions.keys() if key and key.isdigit()]
+        return questions
 
 
 class VideoPageParser(PageParser):

@@ -21,8 +21,8 @@ def get_useragent():
     return zhihu_utils.get_useragent()
 
 
-def generating_page_links(base_url, total_num=50, limit=20):
-    return zhihu_utils.generating_page_links(base_url=base_url, total_num=total_num, limit=limit)
+def generating_page_links(base_url, nums=50, limit=20):
+    return zhihu_utils.generating_page_links(base_url=base_url, nums=nums, limit=limit)
 
 
 def extract_time(json_data: Dict) -> Dict[str, Union[str, int]]:

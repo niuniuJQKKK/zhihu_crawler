@@ -53,14 +53,14 @@ def extract_time(json_data: Dict) -> Dict[str, Union[str, int]]:
     }
 
 
-def generating_page_links(base_url, total_num, limit):
+def generating_page_links(base_url, nums, limit):
     """
     根据总数及每页显示的个数生成下一页的urls
     @param base_url: 基础的url
-    @param total_num: 数据总数 默认50
+    @param nums: 数据总数 默认50
     @param limit: 每页展示的个数 默认20
     """
     page_urls = []
-    for i in range(ceil(total_num / limit)):
+    for i in range(ceil(nums / limit)):
         page_urls.append(re.sub(rf'offset=\d+&limit=\d+', f'offset={i * limit}&limit={limit}', base_url))
     return page_urls

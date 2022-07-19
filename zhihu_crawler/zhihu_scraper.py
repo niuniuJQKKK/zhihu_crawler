@@ -78,7 +78,6 @@ class ZhiHuScraper:
         """
         kwargs['scraper'] = self
         iter_question_pages_fn = partial(iter_question_pages, question_id=question_id, request_fn=self.send, **kwargs)
-        kwargs['total_count'] = kwargs.get('drill_down_count', 0)
         return self._generic_crawler(extract_data, iter_question_pages_fn, **kwargs)
 
     def article_crawler(self, article_id: Union[str], **kwargs) -> Iterator[ArticleType]:
@@ -126,11 +125,15 @@ class ZhiHuScraper:
         热点问题采集
         """
         kwargs['scraper'] = self
-        kwargs['total_count'] = kwargs.pop('question_count', 0)
+        total_count = kwargs.pop('question_nums', 0)
         for domain in domains:
             iter_hot_question_page_fn = partial(iter_hot_question_pages, domain=domain, request_fn=self.send, **kwargs)
+            count = 0
             for result in self._generic_crawler(extract_question_data, iter_hot_question_page_fn, **kwargs):
+                count += 1
                 yield result
+                if count >= total_count:
+                    break
 
     def send(self, url, **kwargs):
         if not url:
@@ -147,6 +150,10 @@ class ZhiHuScraper:
         d_c0 = re.sub('d_c0=|;.*', '', self.default_headers.get('cookie', '')) or ''
         if d_c0:
             kwargs['d_c0'] = d_c0
+        if kwargs.get('z_c0', ''):
+            z_c0 = kwargs.pop('z_c0', '')
+            self.default_headers['cookie'] = self.default_headers.get('cookie', '') + f'; z_c0={z_c0}'
+        logger.info(f'准备请求：{url}')
         if isinstance(url, str):
             if kwargs.get('x_zse_96', False):
                 self.default_headers.update(get_headers(url, d_c0) or {})
@@ -166,6 +173,7 @@ class ZhiHuScraper:
                         # 重新获取代理
                         # proxies = {'http': get_proxy(), 'https': get_proxy()}
             assert response is not None, f'重新请求{retry_limit}次， response为空'
+
         if isinstance(url, list):  # 使用协程请求
             return self.generic_response(url, **kwargs)
 
@@ -180,11 +188,16 @@ class ZhiHuScraper:
         if kwargs.get('x_zse_96', False):
             self.default_headers.update(get_headers(url, kwargs.get('d_c0')) or {})
         self.async_session.headers.update(self.default_headers)
-        response = await self.async_session.get(url, **self.requests_kwargs)
-        if response and response.status_code != 200:
-            logger.error(f'request url: {url}, response code: {response.status_code}')
-        await asyncio.sleep(2)
-        return response
+        try:
+            response = await self.async_session.get(url, **self.requests_kwargs)
+            print(response)
+            # if response and response.status_code != 200:
+            #     logger.error(f'request url: {url}, response code: {response.status_code}')
+            return response
+        except Exception as e:
+            logger.error(f'协程请求报错：{e}')
+            pass
+        return None
 
     def post(self, url, **kwargs):
         pass
@@ -206,12 +219,7 @@ class ZhiHuScraper:
             options = {}
         elif isinstance(options, set):
             options = {k: True for k in options}
-        total_count = kwargs.pop('total_count', 0)
-        count = 0
         for i, page in zip(counter, iter_pages_fn()):
             for element in page:
-                if 0 < total_count <= count:
-                    return None
-                count += 1
                 info = extract_fn(element, options=options, request_fn=self.send)
                 yield info
